@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -40,9 +43,9 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 
 
 global $current_user;
-                                                                                       
+
 $global_currency_obj = null;
-                                                                                       
+
 function get_currency()
 {
         global $current_user,$global_currency_obj;
@@ -50,7 +53,7 @@ function get_currency()
         {
         $global_currency_obj = new Currency();
       //  $global_currency_symbol = '$';
-                                                                                       
+
         if($current_user->getPreference('currency') )
         {
                 $global_currency_obj->retrieve($current_user->getPreference('currency'));
@@ -66,11 +69,26 @@ function get_currency()
 
 class SugarWidgetFieldCurrency extends SugarWidgetFieldInt
 {
-    function SugarWidgetFieldCurrency(&$layout_manager) {
+    function __construct(&$layout_manager) {
         parent::__construct($layout_manager);
-        $this->reporter = $this->layout_manager->getAttribute('reporter');  
+        $this->reporter = $this->layout_manager->getAttribute('reporter');
     }
-    
+
+    /**
+     * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+     */
+    function SugarWidgetFieldCurrency(&$layout_manager){
+        $deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+        if(isset($GLOBALS['log'])) {
+            $GLOBALS['log']->deprecated($deprecatedMessage);
+        }
+        else {
+            trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+        }
+        self::__construct($layout_manager);
+    }
+
+
 
     function & displayList($layout_def)
         {
@@ -90,23 +108,23 @@ class SugarWidgetFieldCurrency extends SugarWidgetFieldInt
             $layout_def['currency_symbol'] = $symbol;
             $layout_def['currency_id'] = $currency_id;
             $display = $this->displayListPlain($layout_def);
-            
+
         if(!empty($layout_def['column_key'])){
-            $field_def = $this->reporter->all_fields[$layout_def['column_key']];    
+            $field_def = $this->reporter->all_fields[$layout_def['column_key']];
         }else if(!empty($layout_def['fields'])){
             $field_def = $layout_def['fields'];
         }
         $record = '';
         if ($layout_def['table_key'] == 'self' && isset($layout_def['fields']['PRIMARYID']))
             $record = $layout_def['fields']['PRIMARYID'];
-        else if (isset($layout_def['fields'][strtoupper($layout_def['table_alias']."_id")])){ 
+        else if (isset($layout_def['fields'][strtoupper($layout_def['table_alias']."_id")])){
             $record = $layout_def['fields'][strtoupper($layout_def['table_alias']."_id")];
         }
         if (!empty($record)) {
 	        $field_name = $layout_def['name'];
 	        $field_type = $field_def['type'];
 	        $module = $field_def['module'];
-	
+
 	        $div_id = $module ."&$record&$field_name";
 	        $str = "<div id='$div_id'>".$display;
             global $sugar_config;
@@ -119,7 +137,7 @@ class SugarWidgetFieldCurrency extends SugarWidgetFieldInt
         else
             return $display;
     }
-                             
+
     function displayListPlain($layout_def) {
         $value = currency_format_number(
             parent::displayListPlain($layout_def),
@@ -131,22 +149,22 @@ class SugarWidgetFieldCurrency extends SugarWidgetFieldInt
             )
         );
         return $value;
-    }                                                          
+    }
  function queryFilterEquals(&$layout_def)
  {
      return $this->_get_column_select($layout_def)."=".$GLOBALS['db']->quote(unformat_number($layout_def['input_name0']))."\n";
  }
-                                                                                       
+
  function queryFilterNot_Equals(&$layout_def)
  {
      return $this->_get_column_select($layout_def)."!=".$GLOBALS['db']->quote(unformat_number($layout_def['input_name0']))."\n";
  }
-                                                                                       
+
  function queryFilterGreater(&$layout_def)
  {
      return $this->_get_column_select($layout_def)." > ".$GLOBALS['db']->quote(unformat_number($layout_def['input_name0']))."\n";
  }
-                                                                                       
+
  function queryFilterLess(&$layout_def)
  {
      return $this->_get_column_select($layout_def)." < ".$GLOBALS['db']->quote(unformat_number($layout_def['input_name0']))."\n";

@@ -1,39 +1,43 @@
 <?php
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
-/*********************************************************************************
+/**
+ *
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+ *
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by SalesAgility Ltd.
+ * Copyright (C) 2011 - 2016 SalesAgility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
- ********************************************************************************/
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
+ */
 
 /*********************************************************************************
 
@@ -80,72 +84,7 @@ function export($type, $records = null, $members = false, $sample=false) {
     global $mod_strings;
     global $current_language;
     $sampleRecordNum = 5;
-    $contact_fields = array(
-        "id"=>"Contact ID"
-        ,"lead_source"=>"Lead Source"
-        ,"date_entered"=>"Date Entered"
-        ,"date_modified"=>"Date Modified"
-        ,"first_name"=>"First Name"
-        ,"last_name"=>"Last Name"
-        ,"salutation"=>"Salutation"
-        ,"birthdate"=>"Lead Source"
-        ,"do_not_call"=>"Do Not Call"
-        ,"email_opt_out"=>"Email Opt Out"
-        ,"title"=>"Title"
-        ,"department"=>"Department"
-        ,"birthdate"=>"Birthdate"
-        ,"do_not_call"=>"Do Not Call"
-        ,"phone_home"=>"Phone (Home)"
-        ,"phone_mobile"=>"Phone (Mobile)"
-        ,"phone_work"=>"Phone (Work)"
-        ,"phone_other"=>"Phone (Other)"
-        ,"phone_fax"=>"Fax"
-        ,"email1"=>"Email"
-        ,"email2"=>"Email (Other)"
-        ,"assistant"=>"Assistant"
-        ,"assistant_phone"=>"Assistant Phone"
-        ,"primary_address_street"=>"Primary Address Street"
-        ,"primary_address_city"=>"Primary Address City"
-        ,"primary_address_state"=>"Primary Address State"
-        ,"primary_address_postalcode"=>"Primary Address Postalcode"
-        ,"primary_address_country"=>"Primary Address Country"
-        ,"alt_address_street"=>"Other Address Street"
-        ,"alt_address_city"=>"Other Address City"
-        ,"alt_address_state"=>"Other Address State"
-        ,"alt_address_postalcode"=>"Other Address Postalcode"
-        ,"alt_address_country"=>"Other Address Country"
-        ,"description"=>"Description"
-    );
 
-    $account_fields = array(
-        "id"=>"Account ID",
-        "name"=>"Account Name",
-        "website"=>"Website",
-        "industry"=>"Industry",
-        "account_type"=>"Type",
-        "ticker_symbol"=>"Ticker Symbol",
-        "employees"=>"Employees",
-        "ownership"=>"Ownership",
-        "phone_office"=>"Phone",
-        "phone_fax"=>"Fax",
-        "phone_alternate"=>"Other Phone",
-        "email1"=>"Email",
-        "email2"=>"Other Email",
-        "rating"=>"Rating",
-        "sic_code"=>"SIC Code",
-        "annual_revenue"=>"Annual Revenue",
-        "billing_address_street"=>"Billing Address Street",
-        "billing_address_city"=>"Billing Address City",
-        "billing_address_state"=>"Billing Address State",
-        "billing_address_postalcode"=>"Billing Address Postalcode",
-        "billing_address_country"=>"Billing Address Country",
-        "shipping_address_street"=>"Shipping Address Street",
-        "shipping_address_city"=>"Shipping Address City",
-        "shipping_address_state"=>"Shipping Address State",
-        "shipping_address_postalcode"=>"Shipping Address Postalcode",
-        "shipping_address_country"=>"Shipping Address Country",
-        "description"=>"Description"
-    );
     //Array of fields that should not be exported, and are only used for logic
     $remove_from_members = array("ea_deleted", "ear_deleted", "primary_address");
     $focus = 0;
@@ -184,6 +123,28 @@ function export($type, $records = null, $members = false, $sample=false) {
             }
             $where .= $focus->getOwnerWhere($current_user->id);
         }
+		/* BEGIN - SECURITY GROUPS */
+    	if(ACLController::requireSecurityGroup($focus->module_dir, 'export') )
+    	{
+			require_once('modules/SecurityGroups/SecurityGroup.php');
+    		global $current_user;
+    		$owner_where = $focus->getOwnerWhere($current_user->id);
+	    	$group_where = SecurityGroup::getGroupWhere($focus->table_name,$focus->module_dir,$current_user->id);
+	    	if(!empty($owner_where)) {
+				if(empty($where))
+	    		{
+	    			$where = " (".  $owner_where." or ".$group_where.")";
+	    		} else {
+	    			$where .= " AND (".  $owner_where." or ".$group_where.")";
+	    		}
+			} else {
+				if(!empty($where)){
+					$where .= ' AND ';
+				}
+				$where .= $group_where;
+			}
+    	}
+    	/* END - SECURITY GROUPS */
 
     }
     // Export entire list was broken because the where clause already has "where" in it
@@ -195,12 +156,8 @@ function export($type, $records = null, $members = false, $sample=false) {
         $beginWhere = substr(trim($where), 0, 5);
         if ($beginWhere == "where")
             $where = substr(trim($where), 5, strlen($where));
-        $ret_array = create_export_query_relate_link_patch($type, $searchFields, $where);
-        if(!empty($ret_array['join'])) {
-            $query = $focus->create_export_query($order_by,$ret_array['where'],$ret_array['join']);
-        } else {
-            $query = $focus->create_export_query($order_by,$ret_array['where']);
-        }
+
+        $query = $focus->create_export_query($order_by,$where);
     }
 
     $result = '';
@@ -266,8 +223,13 @@ function export($type, $records = null, $members = false, $sample=false) {
         //process retrieved record
     	while($val = $db->fetchByAssoc($result, false)) {
 
+        	if ($members)
+			$focus = BeanFactory::getBean($val['related_type']);
+		else
+		{ // field order mapping is not applied for member-exports, as they include multiple modules
             //order the values in the record array
             $val = get_field_order_mapping($focus->module_dir,$val);
+		}
 
             $new_arr = array();
 		if($members){
@@ -318,10 +280,10 @@ function export($type, $records = null, $members = false, $sample=false) {
 
                     // Bug 32463 - Properly have multienum field translated into something useful for the client
                     case 'multienum':
-                        $value = str_replace("^","",$value);
+			$valueArray = unencodeMultiEnum($value);
+
                         if (isset($focus->field_name_map[$fields_array[$key]]['options']) && isset($app_list_strings[$focus->field_name_map[$fields_array[$key]]['options']]) )
                         {
-                            $valueArray = explode(",",$value);
                             foreach ($valueArray as $multikey => $multivalue )
                             {
                                 if (isset($app_list_strings[$focus->field_name_map[$fields_array[$key]]['options']][$multivalue]) )
@@ -329,9 +291,19 @@ function export($type, $records = null, $members = false, $sample=false) {
                                     $valueArray[$multikey] = $app_list_strings[$focus->field_name_map[$fields_array[$key]]['options']][$multivalue];
                                 }
                             }
-                            $value = implode(",",$valueArray);
                         }
+			$value = implode(",",$valueArray);
+
                         break;
+
+		case 'enum':
+			if (	isset($focus->field_name_map[$fields_array[$key]]['options']) &&
+				isset($app_list_strings[$focus->field_name_map[$fields_array[$key]]['options']]) &&
+				isset($app_list_strings[$focus->field_name_map[$fields_array[$key]]['options']][$value])
+			)
+				$value = $app_list_strings[$focus->field_name_map[$fields_array[$key]]['options']][$value];
+
+			break;
                 }
             }
 
@@ -381,11 +353,93 @@ function export($type, $records = null, $members = false, $sample=false) {
             }
         }
 
+        $customRelateFields = array();
+        $selects = array();
+        foreach($records as $record) {
+            foreach($record as $recordKey => $recordValue) {
+                if(preg_match('/{relate\s+from=""([^"]+)""\s+to=""([^"]+)""}/', $recordValue, $matches)) {
+                    $marker = $matches[0];
+                    $relatedValue = '';
+
+                    $splits = explode('.', $matches[1]);
+                    $currentModule = $splits[0];
+                    $currentField = $splits[1];
+                    $currentBean = BeanFactory::getBean($currentModule);
+                    $currentTable = $currentBean->table_name;
+
+                    $splits = explode('.', $matches[2]);
+                    $relatedModule = $splits[0];
+                    $relatedField = $splits[1];
+                    $relatedBean = BeanFactory::getBean($relatedModule);
+                    $relatedTable = $relatedBean->table_name;
+
+                    $relatedLabel = "$relatedTable.name AS related_label, NULL AS related_label1";
+                    if(isset($relatedBean->field_defs['name']['source']) && $relatedBean->field_defs['name']['source'] == 'non-db') {
+                        //$relatedLabel = 'NULL AS related_label, NULL AS related_label1';
+                        if(
+                            !isset($relatedBean->field_defs['first_name']['source']) || $relatedBean->field_defs['first_name']['source'] != 'non-db' &&
+                            !isset($relatedBean->field_defs['last_name']['source']) || $relatedBean->field_defs['last_name']['source'] != 'non-db'
+                        ) {
+                            $relatedLabel = "$relatedTable.last_name AS related_label, $relatedTable.first_name AS related_label1";
+                        }
+                    }
+
+                    $relatedTableCustomJoin = '';
+                    $relatedFieldSelect = "NULL AS related_value";
+                    if(!isset($existsTables["{$relatedTable}_cstm"])) {
+                        $existsTables["{$relatedTable}_cstm"] = $db->tableExists("{$relatedTable}_cstm");
+                    }
+                    if($existsTables["{$relatedTable}_cstm"]) {
+                        $relatedTableCustomJoin = "
+                        JOIN {$relatedTable}_cstm ON {$relatedTable}_cstm.id_c = {$currentTable}_cstm.$relatedField
+                        ";
+                        $relatedFieldSelect = "{$currentTable}_cstm.$relatedField AS related_value";
+                    }
+
+                    $relatedTableJoin = "LEFT JOIN $relatedTable ON $relatedTable.id = {$currentTable}_cstm.id_c";
+                    if(isset($currentBean->field_defs[$relatedField])) {
+                        $relatedTableJoin = "LEFT JOIN $relatedTable ON $relatedTable.id = {$currentTable}_cstm.$relatedField";
+                    }
+
+                    //-- $relatedTable.id AS related_id,
+                    //-- {$currentTable}_cstm.id_c AS current_id_c,
+                    //-- {$relatedTable}_cstm.id_c AS related_id_c,
+                    $selects[] = "(SELECT $currentTable.id AS current_id,'$currentModule' AS current_module,'$currentField' AS current_field,'$relatedModule' AS related_module,'$relatedField' AS related_field,$relatedFieldSelect,$relatedLabel FROM $currentTable JOIN {$currentTable}_cstm ON {$currentTable}_cstm.id_c=$currentTable.id $relatedTableCustomJoin $relatedTableJoin WHERE $currentTable.id='{$record['id']}')";
+                }
+            }
+        }
+
+        $selects = array_unique($selects);
+
+
+        // grab custom related fields information
+
+        // query max length optimization, measured by mssql FreeTDS connection too
+        $queryMaxLength = 620000;
+        $query = '';
+        $i = 0;
+        $selectsCount = count($selects)-1;
+        foreach ($selects as $select) {
+            $queryTemp = $query.($i==0 ? $select : " UNION $select");
+            if ($i==$selectsCount || strlen($queryTemp) > $queryMaxLength) {
+                $result = $db->query($query, 'export error on custom related type: '.$query);
+                while ($val = $db->fetchByAssoc($result, false)) {
+                    $customRelateFields[$val['current_module']][$val['current_id']][$val['related_module']][$val['related_field']] = trim($val['related_label'].' '.$val['related_label1']);
+                }
+                $query = $select;
+            } else {
+                $query = $queryTemp;
+            }
+            $i++;
+        }
+
+
         foreach($records as $record)
         {
             $line = implode("\"" . getDelimiter() . "\"", $record);
             $line = "\"" . $line;
             $line .= "\"\r\n";
+            $line = parseRelateFields($line, $record, $customRelateFields);
             $content .= $line;
         }
 
@@ -395,6 +449,40 @@ function export($type, $records = null, $members = false, $sample=false) {
 
 }
 
+/**
+ * Parse custom related fields
+ * @param $line string CSV line
+ * @param $record array of current line
+ * @return mixed string CSV line
+ */
+function parseRelateFields($line, $record, $customRelateFields)
+{
+    while (preg_match('/{relate\s+from=""([^"]+)""\s+to=""([^"]+)""}/', $line, $matches)) {
+        $marker = $matches[0];
+        $relatedValue = '';
+
+        $splits = explode('.', $matches[1]);
+        $currentModule = $splits[0];
+        $currentField = $splits[1];
+
+        $splits = explode('.', $matches[2]);
+        $relatedModule = $splits[0];
+        $relatedField = $splits[1];
+
+        if ($currentModule != $record['related_type']) {
+            $GLOBALS['log']->debug('incorrect related type in export');
+        } else {
+            if (isset($customRelateFields[$currentModule][$record['id']][$relatedModule][$relatedField])) {
+                $relatedValue = $customRelateFields[$currentModule][$record['id']][$relatedModule][$relatedField];
+            } else {
+                $relatedValue = '';
+            }
+        }
+
+        $line = str_replace($marker, $relatedValue, $line);
+    }
+    return $line;
+}
 
 function generateSearchWhere($module, $query) {//this function is similar with function prepareSearchForm() in view.list.php
     $seed = loadBean($module);
@@ -465,7 +553,7 @@ function generateSearchWhere($module, $query) {//this function is similar with f
         $searchForm = new SearchForm($seed, $module);
         $searchForm->setup($searchdefs, $searchFields, 'SearchFormGeneric.tpl');
     }
-    $searchForm->populateFromArray(sugar_unserialize(base64_decode($query)));
+    $searchForm->populateFromArray(json_decode(html_entity_decode($query),true));
     $where_clauses = $searchForm->generateSearchWhere(true, $module);
     if (count($where_clauses) > 0 )$where = '('. implode(' ) AND ( ', $where_clauses) . ')';
         $GLOBALS['log']->info("Export Where Clause: {$where}");

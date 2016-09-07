@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -48,113 +51,60 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
  * @param  $form_title string to display as the title in the header
  * @param  $other_text string to next to the title.  Typically used for form buttons.
  * @param  $show_help  boolean which determines if the print and help links are shown.
+ * @param  $print_out  boolean which determines if the print/echo out code
  * @return string HTML
  */
 function get_form_header(
     $form_title,
     $other_text,
-    $show_help
+    $show_help,
+    $print_out = false
     )
 {
-    global $sugar_version, $sugar_flavor, $server_unique_key, $current_language, $current_module, $current_action;
-    global $app_strings;
+    global $sugar_version, $sugar_flavor, $server_unique_key, $current_language, $current_module, $current_action, $app_strings;
 
     $blankImageURL = SugarThemeRegistry::current()->getImageURL('blank.gif');
     $printImageURL = SugarThemeRegistry::current()->getImageURL("print.gif");
     $helpImageURL  = SugarThemeRegistry::current()->getImageURL("help.gif");
 
-    $is_min_max = strpos($other_text,"_search.gif");
-    if($is_min_max !== false)
-        $form_title = "{$other_text}&nbsp;{$form_title}";
-
-    $the_form = <<<EOHTML
-<table width="100%" cellpadding="0" cellspacing="0" border="0" class="formHeader h3Row">
-<tr>
-<td nowrap><h3><span>{$form_title}</span></h3></td>
-EOHTML;
-
     $keywords = array("/class=\"button\"/","/class='button'/","/class=button/","/<\/form>/");
-    $match="";
-    foreach ($keywords as $left)
-        if (preg_match($left,$other_text))
+    $match = false;
+    foreach ($keywords as $left) {
+        if (preg_match($left,$other_text)) {
             $match = true;
-
-    if ($other_text && $match) {
-        $the_form .= <<<EOHTML
-<td colspan='10' width='100%'><IMG height='1' width='1' src='$blankImageURL' alt=''></td>
-</tr>
-<tr>
-<td width='100%' align='left' valign='middle' nowrap style='padding-bottom: 2px;'>$other_text</td>
-EOHTML;
-        if ($show_help) {
-            $the_form .= "<td align='right' nowrap>";
-            if ($_REQUEST['action'] != "EditView") {
-                $the_form .= <<<EOHTML
-    <a href='index.php?{$GLOBALS['request_string']}' class='utilsLink'>
-    <img src='{$printImageURL}' alt='{$app_strings["LBL_PRINT"]}' border='0' align='absmiddle'>
-    </a>&nbsp;
-    <a href='index.php?{$GLOBALS['request_string']}' class='utilsLink'>
-    {$app_strings['LNK_PRINT']}
-    </a>
-EOHTML;
-            }
-            $the_form .= <<<EOHTML
-&nbsp;
-    <a href='index.php?module=Administration&action=SupportPortal&view=documentation&version={$sugar_version}&edition={$sugar_flavor}&lang={$current_language}&help_module={$current_module}&help_action={$current_action}&key={$server_unique_key}'
-       class='utilsLink' target='_blank'>
-    <img src='{$helpImageURL}' alt='Help' border='0' align='absmiddle'>
-    </a>&nbsp;
-    <a href='index.php?module=Administration&action=SupportPortal&view=documentation&version={$sugar_version}&edition={$sugar_flavor}&lang={$current_language}&help_module={$current_module}&help_action={$current_action}&key={$server_unique_key}'
-        class='utilsLink' target='_blank'>
-    {$app_strings['LNK_HELP']}
-    </a>
-</td>
-EOHTML;
-        }
-    } 
-    else {
-        if ($other_text && $is_min_max === false) {
-            $the_form .= <<<EOHTML
-<td width='20'><img height='1' width='20' src='$blankImageURL' alt=''></td>
-<td valign='middle' nowrap width='100%'>$other_text</td>
-EOHTML;
-        }
-        else {
-            $the_form .= <<<EOHTML
-<td width='100%'><IMG height='1' width='1' src='$blankImageURL' alt=''></td>
-EOHTML;
-        }
-
-        if ($show_help) {
-            $the_form .= "<td align='right' nowrap>";
-            if ($_REQUEST['action'] != "EditView") {
-                $the_form .= <<<EOHTML
-    <a href='index.php?{$GLOBALS['request_string']}' class='utilsLink'>
-    <img src='{$printImageURL}' alt='{$app_strings['LBL_PRINT']}' border='0' align='absmiddle'>
-    </a>&nbsp;
-    <a href='index.php?{$GLOBALS['request_string']}' class='utilsLink'>
-    {$app_strings['LNK_PRINT']}</a>
-EOHTML;
-            }
-            $the_form .= <<<EOHTML
-    &nbsp;
-    <a href='index.php?module=Administration&action=SupportPortal&view=documentation&version={$sugar_version}&edition={$sugar_flavor}&lang={$current_language}&help_module={$current_module}&help_action={$current_action}&key={$server_unique_key}'
-       class='utilsLink' target='_blank'>
-    <img src='{$helpImageURL}' alt='{$app_strings['LBL_HELP']}' border='0' align='absmiddle'>
-    </a>&nbsp;
-    <a href='index.php?module=Administration&action=SupportPortal&view=documentation&version={$sugar_version}&edition={$sugar_flavor}&lang={$current_language}&help_module={$current_module}&help_action={$current_action}&key={$server_unique_key}'
-        class='utilsLink' target='_blank'>{$app_strings['LNK_HELP']}</a>
-</td>
-EOHTML;
         }
     }
 
-    $the_form .= <<<EOHTML
-</tr>
-</table>
-EOHTML;
+    $other_text_and_match = false;
+    if ($other_text && $match) {
+        $other_text_and_match = true;
+    }
 
-    return $the_form;
+    $template = new Sugar_Smarty();
+
+    $template->assign('sugar_version', $sugar_version);
+    $template->assign('sugar_flavor', $sugar_flavor);
+    $template->assign('server_unique_key', $server_unique_key);
+    $template->assign('current_language', $current_language);
+    $template->assign('current_module', $current_module);
+    $template->assign('current_action', $current_action);
+    $template->assign('app_strings', $app_strings);
+
+    $template->assign('match', $match);
+    $template->assign('other_text_and_match', $other_text_and_match);
+    $template->assign('blankImageURL', $blankImageURL);
+    $template->assign('printImageURL', $printImageURL);
+    $template->assign('helpImageURL', $helpImageURL);
+    $template->assign('show_help', $show_help);
+    $template->assign('other_text', $other_text);
+    $template->assign('form_title', $form_title);
+
+    $template_output = $template->fetch('include/get_form_header.tpl');
+    if($print_out) {
+        echo $template_output;
+    }
+
+    return $template_output;
 }
 
 /**
@@ -286,9 +236,7 @@ function getClassicModuleTitle($module, $params, $show_create=false, $index_url_
 
         $the_title .= <<<EOHTML
 &nbsp;
-<a href="{$create_url_override}" class="utilsLink">
-<img src='{$createRecordImage}' alt='{$GLOBALS['app_strings']['LNK_CREATE']}'></a>
-<a href="{$create_url_override}" class="utilsLink">
+<a href="{$create_url_override}" class="utilsLink" id="create_link">
 {$GLOBALS['app_strings']['LNK_CREATE']}
 </a>
 EOHTML;
@@ -324,7 +272,7 @@ function insert_popup_header(
     if ($includeJS)
     {
         echo <<<EOHTML
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <html {$langHeader}>
 <head>
 EOHTML;
@@ -342,8 +290,13 @@ EOHTML;
         echo '<meta http-equiv="Content-Type" content="text/html; charset="{$charset}">';
         echo '<script type="text/javascript" src="' . getJSPath('cache/include/javascript/sugar_grp1_yui.js') . '"></script>';
         echo '<script type="text/javascript" src="' . getJSPath('cache/include/javascript/sugar_grp1.js') . '"></script>';
-        echo '</head>';
     }
+    /* Fix to include files required to make pop-ups responsive */
+    echo '<meta http-equiv="X-UA-Compatible" content="IE=edge">';
+    echo '<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />';
+    echo '<link href="themes/SuiteR/css/bootstrap.min.css" rel="stylesheet">';
+    echo '<link href="themes/SuiteR/css/colourSelector.php" rel="stylesheet">';
+    echo '</head>';
     echo  '<body class="popupBody">';
 }
 

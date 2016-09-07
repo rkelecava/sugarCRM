@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -69,7 +72,7 @@ class EmailUI {
 	/**
 	 * Sole constructor
 	 */
-	function EmailUI() {
+	function __construct() {
 		global $sugar_config;
 		global $current_user;
 
@@ -85,6 +88,19 @@ class EmailUI {
 		$this->db = DBManagerFactory::getInstance();
 	}
 
+	/**
+	 * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+	 */
+	function EmailUI(){
+		$deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+		if(isset($GLOBALS['log'])) {
+			$GLOBALS['log']->deprecated($deprecatedMessage);
+		}
+		else {
+			trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+		}
+		self::__construct();
+	}
 
 	///////////////////////////////////////////////////////////////////////////
 	////	CORE
@@ -425,6 +441,7 @@ eoq;
 		$lang = "var app_strings = new Object();\n";
 		foreach($app_strings as $k => $v) {
 			if(strpos($k, 'LBL_EMAIL_') !== false) {
+				$v = str_replace("'", "\'", $v);
 				$lang .= "app_strings.{$k} = '{$v}';\n";
 			}
 		}
@@ -1819,6 +1836,10 @@ function getSingleMessage($ie) {
 			$filename = $_REQUEST['mbox'].$md5uidl.".php";
 		} // if
 
+		if(isset($filename) && strpos($filename, "..") !== false){
+			die("Directory navigation attack denied.");
+		}
+
 		if($this->validCacheFileExists($_REQUEST['ieId'], 'messages', $filename)) {
 			$out = $this->getCacheValue($_REQUEST['ieId'], 'messages', $filename, 'out');
 			$noCache = false;
@@ -2107,6 +2128,19 @@ eoq;
 			$t .= "JOIN email_addresses ea ON (eabr.email_address_id = ea.id) ";
 			$t .= " WHERE {$where}";
 
+			/* BEGIN - SECURITY GROUPS */
+			//this function may not even be used anymore. Seems like findEmailFromBeanIds is preferred now
+			if($person->bean_implements('ACL') && ACLController::requireSecurityGroup($module, 'list') )
+			{
+				require_once('modules/SecurityGroups/SecurityGroup.php');
+				global $current_user;
+				$owner_where = $person->getOwnerWhere($current_user->id);
+				$group_where = SecurityGroup::getGroupWhere($table,$module,$current_user->id);
+				$t .= " AND (".  $owner_where." or ".$group_where.") ";
+			}
+			/* END - SECURITY GROUPS */
+
+
 			if(!empty($q)) {
 				$q .= "\n UNION ALL \n";
 			}
@@ -2245,6 +2279,18 @@ eoq;
 			$t .= "JOIN email_addr_bean_rel eabr ON ({$table}.id = eabr.bean_id and eabr.deleted=0) ";
 			$t .= "JOIN email_addresses ea ON (eabr.email_address_id = ea.id) ";
 			$t .= " WHERE {$where}";
+			/* BEGIN - SECURITY GROUPS */
+			//this function may not even be used anymore. Seems like findEmailFromBeanIds is preferred now
+			if($person->bean_implements('ACL') && ACLController::requireSecurityGroup($module, 'list') )
+			{
+				require_once('modules/SecurityGroups/SecurityGroup.php');
+				global $current_user;
+				$owner_where = $person->getOwnerWhere($current_user->id);
+				$group_where = SecurityGroup::getGroupWhere($table,$module,$current_user->id);
+				$t .= " AND (".  $owner_where." or ".$group_where.") ";
+			}
+			/* END - SECURITY GROUPS */
+
 		} // if
 		return $t;
     }
@@ -2461,7 +2507,7 @@ eoq;
 
 		if(ACLController::checkAccess('EmailTemplates', 'list', true) && ACLController::checkAccess('EmailTemplates', 'view', true)) {
 			$et = new EmailTemplate();
-            $etResult = $et->db->query($et->create_new_list_query('',"(type IS NULL OR type='' OR type='email')",array(),array(),''));
+            $etResult = $et->db->query($et->create_new_list_query('',"(email_templates.type IS NULL OR email_templates.type='' OR email_templates.type='email')",array(),array(),''));
 			$email_templates_arr = array('' => $app_strings['LBL_NONE']);
 			while($etA = $et->db->fetchByAssoc($etResult)) {
 				$email_templates_arr[$etA['id']] = $etA['name'];

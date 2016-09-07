@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -105,7 +108,7 @@ class MassUpdate
 		unset($_REQUEST['current_query_by_page']);
 		unset($_REQUEST[session_name()]);
 		unset($_REQUEST['PHPSESSID']);
-		$query = base64_encode(serialize($_REQUEST));
+		$query = json_encode($_REQUEST);
 
         $bean = loadBean($_REQUEST['module']);
        $order_by_name = $bean->module_dir.'2_'.strtoupper($bean->object_name).'_ORDER_BY' ;
@@ -321,6 +324,26 @@ eoq;
 							} // if
 	                    } // if
 
+						// Fix for issue 1549: mass update the cases, and change the state value from open to close,
+						// Status value can still display New, Assigned, Pending Input (even though it should not)
+						foreach ($newbean->field_name_map as $field_name) {
+							if( isset($field_name['type']) && $field_name['type'] == 'dynamicenum' )  {
+								if( isset($field_name['parentenum']) && $field_name['parentenum'] != '' ) {
+									$parentenum_name = $field_name['parentenum'];
+									// Updated parent field value.
+									$parentenum_value = $newbean->$parentenum_name;
+
+									$dynamic_field_name = $field_name['name'];
+									// Dynamic field set value.
+									list($dynamic_field_value) = explode('_', $newbean->$dynamic_field_name);
+
+									if($parentenum_value != $dynamic_field_value) {
+										// Change to the default value of the correct value set.
+										$newbean->$dynamic_field_name = $parentenum_value . '_' . $parentenum_value;
+									}
+								}
+							}
+						}
 
 						$newbean->save($check_notify);
 						if (!empty($email_address_id)) {
@@ -1235,7 +1258,7 @@ EOQ;
         }
 	/* bug 31271: using false to not add all bean fields since some beans - like SavedReports
 	   can have fields named 'module' etc. which may break the query */
-        $query = sugar_unserialize(base64_decode($query));
+		$query = json_decode(html_entity_decode($query),true);
         $searchForm->populateFromArray($query, null, true);
         $this->searchFields = $searchForm->searchFields;
         $where_clauses = $searchForm->generateSearchWhere(true, $module);

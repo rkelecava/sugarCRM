@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -73,6 +76,11 @@ $prefix = 'wiz_step3_';
 $marketing = new EmailMarketing();
 if (isset($_REQUEST['record']) && !empty($_REQUEST['record'])) {
     $marketing->retrieve($_REQUEST['record']);
+}
+else {
+    if(!empty($_SESSION['campaignWizard'][$_REQUEST['campaign_id']]['defaultSelectedMarketingId'])) {
+        $marketing->retrieve($_SESSION['campaignWizard'][$_REQUEST['campaign_id']]['defaultSelectedMarketingId']);
+    }
 }
 if(!$marketing->ACLAccess('Save')){
         ACLController::displayNoAccess(true);
@@ -182,8 +190,52 @@ if($master !='save'){
     require_once('modules/Campaigns/QueueCampaign.php');
 }
 
-$header_URL = "Location: index.php?action=WizardHome&module=Campaigns&record=".$marketing->campaign_id;
+if(isset($_REQUEST['show_wizard_summary']) && $_REQUEST['show_wizard_summary']) {
+
+    if( (isset($_REQUEST['sendMarketingEmailTest']) && $_REQUEST['sendMarketingEmailTest']) ||
+        (isset($_REQUEST['sendMarketingEmailSchedule']) && $_REQUEST['sendMarketingEmailSchedule']) ) {
+        // set correct post variables..
+        $_POST['module'] = 'Campaigns';
+        $_POST['action'] = 'QueueCampaign';
+        $_POST['process_form'] = false;
+        $_POST['return_module'] = 'Campaigns';
+        $_POST['return_id'] = $marketing->campaign_id;
+        $_POST['return_action'] = 'WizardHome';
+        $_POST['record'] = $marketing->campaign_id;
+        $_POST['direct_step'] = '1';
+        //$_POST['campaign_id'] = '';
+        $_POST['wiz_mass'] = $marketing->id;
+        if(isset($_REQUEST['sendMarketingEmailTest']) && $_REQUEST['sendMarketingEmailTest']) {
+            $_POST['mode'] = 'test';
+        }
+        else if(isset($_REQUEST['sendMarketingEmailSchedule']) && $_REQUEST['sendMarketingEmailSchedule']) {
+            $_POST['mode'] = 'send';
+            $_SESSION['msg'] = 'LBL_EMAILS_SCHEDULED';
+        }
+        else {
+            throw new Exception('request error');
+        }
+
+        //$_POST['SUBMIT'] = 'Send Test';
+        $_REQUEST = array_merge($_REQUEST, $_POST);
+        include 'modules/Campaigns/QueueCampaign.php';
+        exit;
+    }
+
+    $header_URL = "Location: index.php?action=WizardMarketing&module=Campaigns&return_module=Campaigns&return_action=WizardHome&return_id=" . $marketing->campaign_id . "&campaign_id=" . $marketing->campaign_id . "&jump=3&marketing_id=" . $marketing->id;
+}
+else {
+    $header_URL = "Location: index.php?action=WizardHome&module=Campaigns&record=".$marketing->campaign_id;
+}
+
 $GLOBALS['log']->debug("about to post header URL of: $header_URL");
-header($header_URL);
+
+if(preg_match('/\s*Location:\s*(.*)$/', $header_URL, $matches)) {
+    $href = $matches[1];
+    SugarApplication::redirect($href);
+}
+else {
+    header($header_URL);
+}
 
 ?>

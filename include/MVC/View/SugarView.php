@@ -2,36 +2,39 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /**
@@ -83,12 +86,29 @@ class SugarView
     /**
      * Constructor which will peform the setup.
      */
-    public function SugarView(
+    public function __construct(
         $bean = null,
         $view_object_map = array()
         )
     {
     }
+
+    /**
+     * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+     */
+    public function SugarView($bean = null,
+        $view_object_map = array()
+        ){
+        $deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+        if(isset($GLOBALS['log'])) {
+            $GLOBALS['log']->deprecated($deprecatedMessage);
+        }
+        else {
+            trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+        }
+        self::__construct($bean, $view_object_map);
+    }
+
 
     public function init(
         $bean = null,
@@ -183,7 +203,7 @@ class SugarView
                 'favicon' => $this->getFavicon(),
             );
 
-            if(SugarThemeRegistry::current()->name == 'Classic')
+            if(SugarThemeRegistry::current()->name == 'Classic' || SugarThemeRegistry::current()->classic)
                 $ajax_ret['moduleList'] = $this->displayHeader(true);
 
             if(empty($this->responseTime))
@@ -299,6 +319,7 @@ class SugarView
         $ss = new Sugar_Smarty();
         $ss->assign("APP", $app_strings);
         $ss->assign("THEME", $theme);
+        $ss->assign("THEME_CONFIG", $themeObject->getConfig());
         $ss->assign("THEME_IE6COMPAT", $themeObject->ie6compat ? 'true':'false');
         $ss->assign("MODULE_NAME", $this->module);
         $ss->assign("langHeader", get_language_header());
@@ -454,6 +475,11 @@ class SugarView
             $ss->assign("CURRENT_USER_ID", $current_user->id);
 
             // get the last viewed records
+            require_once("modules/Favorites/Favorites.php");
+            $favorites = new Favorites();
+            $favorite_records = $favorites->getCurrentUserSidebarFavorites();
+            $ss->assign("favoriteRecords",$favorite_records);
+
             $tracker = new Tracker();
             $history = $tracker->get_recently_viewed($current_user->id);
             $ss->assign("recentRecords",$this->processRecentRecords($history));
@@ -507,6 +533,7 @@ class SugarView
                 require_once('include/GroupedTabs/GroupedTabStructure.php');
                 $groupedTabsClass = new GroupedTabStructure();
                 $modules = query_module_access_list($current_user);
+
                 //handle with submoremodules
                 $max_tabs = $current_user->getPreference('max_tabs');
                 // If the max_tabs isn't set incorrectly, set it within the range, to the default max sub tabs size
@@ -546,7 +573,6 @@ class SugarView
                 $ss->assign('currentGroupTab',$app_strings['LBL_TABGROUP_ALL']);
 
                 $usingGroupTabs = false;
-
                 $groupTabs[$app_strings['LBL_TABGROUP_ALL']]['modules'] = $fullModuleList;
 
             }
@@ -624,6 +650,7 @@ class SugarView
                         );
                 }
             }
+            if(!empty($sugar_config['lock_homepage']) && $sugar_config['lock_homepage'] == true) $ss->assign('lock_homepage', true);
             $ss->assign("groupTabs",$groupTabs);
             $ss->assign("shortcutTopMenu",$shortcutTopMenu);
             $ss->assign('USE_GROUP_TABS',$usingGroupTabs);
@@ -634,7 +661,7 @@ class SugarView
 
 
         }
-        
+
         if ( isset($extraTabs) && is_array($extraTabs) ) {
             // Adding shortcuts array to extra menu array for displaying shortcuts associated with each module
             $shortcutExtraMenu = array();
@@ -654,12 +681,12 @@ class SugarView
             }
             $ss->assign("shortcutExtraMenu",$shortcutExtraMenu);
         }
-       
+
        if(!empty($current_user)){
        	$ss->assign("max_tabs", $current_user->getPreference("max_tabs"));
-       } 
-      
-       
+       }
+
+
         $imageURL = SugarThemeRegistry::current()->getImageURL("dashboard.png");
         $homeImage = "<img src='$imageURL'>";
 		$ss->assign("homeImage",$homeImage);
@@ -708,37 +735,38 @@ class SugarView
         global $timedate, $login_error; // cn: bug 13855 - timedate not available to classic views.
         if (!empty($this->module))
             $currentModule = $this->module;
-        require_once ($file);
+        include_once ($file);
     }
 
     protected function _displayLoginJS()
     {
         global $sugar_config, $timedate;
 
+        $template = new Sugar_Smarty();
+
         if(isset($this->bean->module_dir)){
-            echo "<script>var module_sugar_grp1 = '{$this->bean->module_dir}';</script>";
+            $template->assign('MODULE_SUGAR_GRP1', $this->bean->module_dir);
         }
         if(isset($_REQUEST['action'])){
-            echo "<script>var action_sugar_grp1 = '{$_REQUEST['action']}';</script>";
+            $template->assign('ACTION_SUGAR_GRP1', $_REQUEST['action']);
         }
+
+
         echo '<script>jscal_today = 1000*' . $timedate->asUserTs($timedate->getNow()) . '; if(typeof app_strings == "undefined") app_strings = new Array();</script>';
         if (!is_file(sugar_cached("include/javascript/sugar_grp1.js"))) {
             $_REQUEST['root_directory'] = ".";
             require_once("jssource/minify_utils.php");
             ConcatenateFiles(".");
         }
-        echo getVersionedScript('cache/include/javascript/sugar_grp1_jquery.js');
-        echo getVersionedScript('cache/include/javascript/sugar_grp1_yui.js');
-        echo getVersionedScript('cache/include/javascript/sugar_grp1.js');
-        echo getVersionedScript('include/javascript/calendar.js');
-        echo <<<EOQ
-        <script>
-            if ( typeof(SUGAR) == 'undefined' ) {SUGAR = {}};
-            if ( typeof(SUGAR.themes) == 'undefined' ) SUGAR.themes = {};
-        </script>
-EOQ;
-        if(isset( $sugar_config['disc_client']) && $sugar_config['disc_client'])
-            echo getVersionedScript('modules/Sync/headersync.js');
+        $template->assign('SUGAR_GRP1_JQUERY', getVersionedPath('cache/include/javascript/sugar_grp1_jquery.js'));
+        $template->assign('SUGAR_GRP1_YUI', getVersionedPath('cache/include/javascript/sugar_grp1_yui.js'));
+        $template->assign('SUGAR_GRP1', getVersionedPath('cache/include/javascript/sugar_grp1.js'));
+        $template->assign('CALENDAR', getVersionedPath('include/javascript/calendar.js'));
+
+        if(isset( $sugar_config['disc_client']) && $sugar_config['disc_client']) {
+            $template->assign('HEADERSYNC', getVersionedPath('modules/Sync/headersync.js'));
+        }
+        echo $template->fetch('include/MVC/View/tpls/displayLoginJS.tpl');
     }
 
     /**
@@ -915,7 +943,6 @@ EOHTML;
 
 
         $copyright = '&copy; 2004-2013 SugarCRM Inc. The Program is provided AS IS, without warranty.  Licensed under <a href="LICENSE.txt" target="_blank" class="copyRightLink">AGPLv3</a>.<br>This program is free software; you can redistribute it and/or modify it under the terms of the <br><a href="LICENSE.txt" target="_blank" class="copyRightLink"> GNU Affero General Public License version 3</a> as published by the Free Software Foundation, including the additional permission set forth in the source code header.<br>';
-
 
 
 
@@ -1240,7 +1267,7 @@ EOHTML;
 		$userTabs = query_module_access_list($current_user);
 		//If the home tab is in the user array use it as the default tab, otherwise use the first element in the tab array
 		$defaultTab = (in_array("Home",$userTabs)) ? "Home" : key($userTabs);
-		
+
         // Need to figure out what tab this module belongs to, most modules have their own tabs, but there are exceptions.
         if ( !empty($_REQUEST['module_tab']) )
             return $_REQUEST['module_tab'];
@@ -1296,16 +1323,21 @@ EOHTML;
         }
 
         if(!empty($paramString)){
-               $theTitle .= "<h2> $paramString </h2>\n";
+               $theTitle .= "<h2> $paramString </h2>";
+
+            if($this->type == "detail"){
+                $theTitle .= "<div class='favorite' record_id='" . $this->bean->id . "' module='" . $this->bean->module_dir . "'><div class='favorite_icon_outline'>" . SugarThemeRegistry::current()->getImage('favorite-star-outline','title="' . translate('LBL_DASHLET_EDIT', 'Home') . '" border="0"  align="absmiddle"', null,null,'.gif',translate('LBL_DASHLET_EDIT', 'Home')) . "</div>
+                                                    <div class='favorite_icon_fill'>" . SugarThemeRegistry::current()->getImage('favorite-star','title="' . translate('LBL_DASHLET_EDIT', 'Home') . '" border="0"  align="absmiddle"', null,null,'.gif',translate('LBL_DASHLET_EDIT', 'Home')) . "</div></div>";
+            }
            }
 
-
         // bug 56131 - restore conditional so that link doesn't appear where it shouldn't
-        if($show_help) {
+        if($show_help || $this->type == 'list') {
             $theTitle .= "<span class='utils'>";
             $createImageURL = SugarThemeRegistry::current()->getImageURL('create-record.gif');
-            $url = ajaxLink("index.php?module=$module&action=EditView&return_module=$module&return_action=DetailView");
-            $theTitle .= <<<EOHTML
+            if($this->type == 'list') $theTitle .= '<a href="#" class="btn btn-success showsearch"><span class=" glyphicon glyphicon-search" aria-hidden="true"></span></a>';$url = ajaxLink("index.php?module=$module&action=EditView&return_module=$module&return_action=DetailView");
+            if($show_help) {
+                $theTitle .= <<<EOHTML
 &nbsp;
 <a id="create_image" href="{$url}" class="utilsLink">
 <img src='{$createImageURL}' alt='{$GLOBALS['app_strings']['LNK_CREATE']}'></a>
@@ -1313,6 +1345,7 @@ EOHTML;
 {$GLOBALS['app_strings']['LNK_CREATE']}
 </a>
 EOHTML;
+            }
             $theTitle .= "</span>";
         }
 

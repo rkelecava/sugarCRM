@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -62,7 +65,7 @@ class SugarLogger implements LoggerTemplate
 	protected $filesuffix = "";
     protected $date_suffix = "";
 	protected $log_dir = '.';
-    protected $full_log_file;
+
 
 	/**
 	 * used for config screen
@@ -217,46 +220,24 @@ class SugarLogger implements LoggerTemplate
         }
 		//check if our log file is greater than that or if we are forcing the log to roll if and only if roll size assigned the value correctly
 		if ( $force || ($rollAt && filesize ( $this->full_log_file ) >= $rollAt) ) {
-            $temp = tempnam($this->log_dir, 'rot');
-            if ($temp) {
-                // warning here is expected in case if log file is opened by another process on Windows
-                // or rotation has been already started by another process
-                if (@rename($this->full_log_file, $temp)) {
+			//now lets move the logs starting at the oldest and going to the newest
+			for($i = $this->maxLogs - 2; $i > 0; $i --) {
+                if (file_exists ( $this->log_dir . $this->logfile . $this->date_suffix . '_'. $i . $this->ext )) {
+					$to = $i + 1;
+                    $old_name = $this->log_dir . $this->logfile . $this->date_suffix . '_'. $i . $this->ext;
+                    $new_name = $this->log_dir . $this->logfile . $this->date_suffix . '_'. $to . $this->ext;
+					//nsingh- Bug 22548  Win systems fail if new file name already exists. The fix below checks for that.
+					//if/else branch is necessary as suggested by someone on php-doc ( see rename function ).
+					sugar_rename($old_name, $new_name);
 
-                    // manually remove the obsolete part. Otherwise, rename() may fail on Windows (bug #22548)
-                    $obsolete_part = $this->getLogPartPath($this->maxLogs - 1);
-                    if (file_exists($obsolete_part)) {
-                        unlink($obsolete_part);
-                    }
+					//rename ( $this->logfile . $i . $this->ext, $this->logfile . $to . $this->ext );
+				}
+			}
+			//now lets move the current .log file
+            sugar_rename ($this->full_log_file, $this->log_dir . $this->logfile . $this->date_suffix . '_1' . $this->ext);
 
-                    // now lets move the logs starting at the oldest and going to the newest
-                    for ($old = $this->maxLogs - 2; $old > 0; $old--) {
-                        $old_name = $this->getLogPartPath($old);
-                        if (file_exists($old_name)) {
-                            $new_name = $this->getLogPartPath($old + 1);
-                            rename($old_name, $new_name);
-                        }
-                    }
-
-                    $part1 = $this->getLogPartPath(1);
-                    rename($temp, $part1);
-                } else {
-                    unlink($temp);
-                }
-            }
 		}
 	}
-
-    /**
-     * Returns path for the given log part
-     *
-     * @param int $i
-     * @return string
-     */
-    protected function getLogPartPath($i)
-    {
-        return $this->log_dir . $this->logfile . $this->date_suffix . '_' . $i . $this->ext;
-    }
 
     /**
 	 * This is needed to prevent unserialize vulnerability

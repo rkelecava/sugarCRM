@@ -3,7 +3,10 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
@@ -30,9 +33,9 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
  * 
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -122,20 +125,6 @@ if(file_exists($uploadHta) && filesize($uploadHta)) {
 	if(!file_put_contents($uploadHta, $denyAll)) {
 		$htaccess_failed = true;
 	}
-}
-
-include('modules/Versions/ExpectedVersions.php');
-
-global $expect_versions;
-
-if (isset($expect_versions['htaccess'])) {
-        $version = new Version();
-        $version->retrieve_by_string_fields(array('name'=>'htaccess'));
-
-        $version->name = $expect_versions['htaccess']['name'];
-        $version->file_version = $expect_versions['htaccess']['file_version'];
-        $version->db_version = $expect_versions['htaccess']['db_version'];
-        $version->save();
 }
 
 /* Commenting out as this shows on upgrade screen

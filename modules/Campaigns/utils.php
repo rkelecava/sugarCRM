@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -50,15 +53,6 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
  */
 function get_message_scope_dom($campaign_id, $campaign_name,$db=null, $mod_strings=array()) {
 
-    //find prospect list attached to this campaign..
-    $query =  "SELECT prospect_list_id, prospect_lists.name ";
-    $query .= "FROM prospect_list_campaigns ";
-    $query .= "INNER join prospect_lists on prospect_lists.id = prospect_list_campaigns.prospect_list_id ";
-    $query .= "WHERE prospect_lists.deleted = 0 ";
-    $query .= "AND prospect_list_campaigns.deleted=0 ";
-    $query .= "AND campaign_id='".$campaign_id."'";
-    $query.=" and prospect_lists.list_type not like 'exempt%'";
-
     if (empty($db)) {
         $db = DBManagerFactory::getInstance();
     }
@@ -66,6 +60,15 @@ function get_message_scope_dom($campaign_id, $campaign_name,$db=null, $mod_strin
         global $current_language;
         $mod_strings = return_module_language($current_language, 'Campaigns');
     }
+
+    //find prospect list attached to this campaign..
+    $query =  "SELECT prospect_list_id, prospect_lists.name ";
+    $query .= "FROM prospect_list_campaigns ";
+    $query .= "INNER join prospect_lists on prospect_lists.id = prospect_list_campaigns.prospect_list_id ";
+    $query .= "WHERE prospect_lists.deleted = 0 ";
+    $query .= "AND prospect_list_campaigns.deleted=0 ";
+    $query .= "AND campaign_id='". $db->quote($campaign_id)."'";
+    $query.=" and prospect_lists.list_type not like 'exempt%'";
 
     //add campaign to the result array.
     //$return_array[$campaign_id]= $campaign_name . ' (' . $mod_strings['LBL_DEFAULT'] . ')';
@@ -95,9 +98,9 @@ function get_campaign_mailboxes(&$emails, $get_name=true) {
     	if($get_name) {
     		$return_array[$row['id']] = $row['name'];
     	} else {
-        	$return_array[$row['id']]= InboundEmail::get_stored_options('from_name',$row['name'],$row['stored_options']);
+        	$return_array[$row['id']]= InboundEmail::get_stored_options_static('from_name',$row['name'],$row['stored_options']);
     	}
-        $emails[$row['id']]=InboundEmail::get_stored_options('from_addr','nobody@example.com',$row['stored_options']);
+        $emails[$row['id']]=InboundEmail::get_stored_options_static('from_addr','nobody@example.com',$row['stored_options']);
     }
 
     if (empty($return_array)) $return_array=array(''=>'');
@@ -315,6 +318,8 @@ function get_campaign_urls($campaign_id) {
 
         $db = DBManagerFactory::getInstance();
 
+        $campaign_id = $db->quote($campaign_id);
+
         $query1="select * from campaign_trkrs where campaign_id='$campaign_id' and deleted=0";
         $current=$db->query($query1);
         while (($row=$db->fetchByAssoc($current)) != null) {
@@ -339,6 +344,17 @@ function get_subscription_lists_query($focus, $additional_fields = null) {
     $all_news_type_pl_query .= "and c.campaign_type = 'NewsLetter'  and pl.deleted = 0 and c.deleted=0 and plc.deleted=0 ";
     $all_news_type_pl_query .= "and (pl.list_type like 'exempt%' or pl.list_type ='default') ";
 
+	/* BEGIN - SECURITY GROUPS */
+	if($focus->bean_implements('ACL') && ACLController::requireSecurityGroup('Campaigns', 'list') )
+	{
+		require_once('modules/SecurityGroups/SecurityGroup.php');
+		global $current_user;
+		$owner_where = $focus->getOwnerWhere($current_user->id);
+		$group_where = SecurityGroup::getGroupWhere('c','Campaigns',$current_user->id);
+		$all_news_type_pl_query .= " AND ( c.assigned_user_id ='".$current_user->id."' or ".$group_where.") ";
+	}
+	/* END - SECURITY GROUPS */
+		
     $all_news_type_list =$focus->db->query($all_news_type_pl_query);
 
     //build array of all newsletter campaigns
@@ -699,11 +715,26 @@ function process_subscriptions($subscription_string_to_parse) {
      *This function will return a string to the newsletter wizard if campaign check
      *does not return 100% healthy.
      */
-    function diagnose()
+    function diagnose(&$errors = array(), &$links = array())
     {
         global $mod_strings;
         global $current_user;
-        $msg = " <table class='detail view small' width='100%'><tr><td> ".$mod_strings['LNK_CAMPAIGN_DIGNOSTIC_LINK']."</td></tr>";
+
+        $errors = array(
+            'mailbox1' => false,
+            'mailbox2' => false,
+            'admin' => false,
+            'scheduler1' => false,
+            'scheduler2' => false,
+        );
+
+        $links = array(
+            'scheduler' => false,
+            'email' => false,
+        );
+
+        $msg = " <table class='diagnose_messages detail view small' width='100%'><tr><td> ".$mod_strings['LNK_CAMPAIGN_DIGNOSTIC_LINK']."</td></tr>";
+
         //Start with email components
         //monitored mailbox section
         $focus = new Administration();
@@ -726,6 +757,7 @@ function process_subscriptions($subscription_string_to_parse) {
             //if array is empty, then increment health counter
             $email_health =$email_health +1;
             $msg  .=  "<tr><td ><font color='red'><b>". $mod_strings['LBL_MAILBOX_CHECK1_BAD']."</b></font></td></tr>";
+            $errors['mailbox1'] = $mod_strings['LBL_MAILBOX_CHECK1_BAD'];
         }
 
 
@@ -733,23 +765,27 @@ function process_subscriptions($subscription_string_to_parse) {
             //if "from_address" is the default, then set "bad" message and increment health counter
             $email_health =$email_health +1;
             $msg .= "<tr><td ><font color='red'><b> ".$mod_strings['LBL_MAILBOX_CHECK2_BAD']." </b></font></td></tr>";
+            $errors['mailbox2'] = $mod_strings['LBL_MAILBOX_CHECK2_BAD'];
         }else{
             //do nothing, address has been changed
         }
         //if health counter is above 1, then show admin link
         if($email_health>0){
             if (is_admin($current_user)){
-                $msg.="<tr><td ><a href='index.php?module=Campaigns&action=WizardEmailSetup";
+                $lnk = 'index.php?module=Campaigns&action=WizardEmailSetup';
+                $msg.="<tr><td ><a href='";
                 if(isset($_REQUEST['return_module'])){
-                    $msg.="&return_module=".$_REQUEST['return_module'];
+                    $lnk .="&return_module=".$_REQUEST['return_module'];
                 }
                 if(isset($_REQUEST['return_action'])){
-                    $msg.="&return_action=".$_REQUEST['return_action'];
+                    $lnk .="&return_action=".$_REQUEST['return_action'];
                 }
+                $msg .= $lnk;
+                $links['email'] = $lnk;
                 $msg.="'>".$mod_strings['LBL_EMAIL_SETUP_WIZ']."</a></td></tr>";
             }else{
                 $msg.="<tr><td >".$mod_strings['LBL_NON_ADMIN_ERROR_MSG']."</td></tr>";
-
+                $errors['admin'] = $mod_strings['LBL_NON_ADMIN_ERROR_MSG'];
             }
 
         }
@@ -784,18 +820,23 @@ function process_subscriptions($subscription_string_to_parse) {
         if($check_sched2 != 'found'){
             $sched_health =$sched_health +1;
             $msg.= "<tr><td><font color='red'><b>".$mod_strings['LBL_SCHEDULER_CHECK1_BAD']."</b></font></td></tr>";
+            $errors['scheduler1'] = $mod_strings['LBL_SCHEDULER_CHECK1_BAD'];
         }
         if($check_sched1 != 'found'){
             $sched_health =$sched_health +1;
             $msg.= "<tr><td><font color='red'><b>".$mod_strings['LBL_SCHEDULER_CHECK2_BAD']."</b></font></td></tr>";
+            $errors['scheduler2'] = $mod_strings['LBL_SCHEDULER_CHECK2_BAD'];
         }
         //if health counter is above 1, then show admin link
         if($sched_health>0){
             global $current_user;
             if (is_admin($current_user)){
-                $msg.="<tr><td ><a href='index.php?module=Schedulers&action=index'>".$mod_strings['LBL_SCHEDULER_LINK']."</a></td></tr>";
+                $link = 'index.php?module=Schedulers&action=index';
+                $msg.="<tr><td ><a href='$link'>".$mod_strings['LBL_SCHEDULER_LINK']."</a></td></tr>";
+                $links['scheduler'] = $link;
             }else{
                 $msg.="<tr><td >".$mod_strings['LBL_NON_ADMIN_ERROR_MSG']."</td></tr>";
+                $errors['admin'] = $mod_strings['LBL_NON_ADMIN_ERROR_MSG'];
             }
 
         }

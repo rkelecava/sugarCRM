@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 require_once('include/ListView/ListViewSmarty.php');
@@ -67,8 +70,8 @@ class PopupSmarty extends ListViewSmarty{
     var $module;
     var $massUpdateData = '';
 
-	function PopupSmarty($seed, $module){
-		parent::ListViewSmarty();
+	public function __construct($seed, $module){
+		parent::__construct();
 		$this->th = new TemplateHandler();
 		$this->th->loadSmarty();
 		$this->seed = $seed;
@@ -82,8 +85,23 @@ class PopupSmarty extends ListViewSmarty{
 	}
 
     /**
+     * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+     */
+    public function PopupSmarty($seed, $module){
+        $deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+        if(isset($GLOBALS['log'])) {
+            $GLOBALS['log']->deprecated($deprecatedMessage);
+        }
+        else {
+            trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+        }
+        self::__construct($seed, $module);
+    }
+
+
+    /**
      * Assign several arrow image attributes to TemplateHandler smarty. Such as width, height, etc.
-     * 
+     *
      * @return void
      */
     function processArrowVars()
@@ -215,10 +233,10 @@ class PopupSmarty extends ListViewSmarty{
 
 
 		$associated_row_data = array();
-		
+
 		//C.L. - Bug 44324 - Override the NAME entry to not display salutation so that the data returned from the popup can be searched on correctly
 		$searchNameOverride = !empty($this->seed) && $this->seed instanceof Person && (isset($this->data['data'][0]['FIRST_NAME']) && isset($this->data['data'][0]['LAST_NAME'])) ? true : false;
-		
+
 		global $locale;
 		foreach($this->data['data'] as $val)
 		{
@@ -243,12 +261,12 @@ class PopupSmarty extends ListViewSmarty{
 		$this->th->ss->assign('formData', $this->formData);
 		$this->th->ss->assign('APP', $GLOBALS['app_strings']);
 		$this->th->ss->assign('MOD', $GLOBALS['mod_strings']);
-        if (isset($this->_popupMeta['create']['createButton'])) 
+        if (isset($this->_popupMeta['create']['createButton']))
 		{
            $this->_popupMeta['create']['createButton'] = translate($this->_popupMeta['create']['createButton']);
         }
 		$this->th->ss->assign('popupMeta', $this->_popupMeta);
-        $this->th->ss->assign('current_query', base64_encode(serialize($_REQUEST)));
+        $this->th->ss->assign('current_query', htmlentities(json_encode(($_REQUEST))));
 		$this->th->ss->assign('customFields', $this->customFieldDefs);
 		$this->th->ss->assign('numCols', NUM_COLS);
 		$this->th->ss->assign('massUpdateData', $this->massUpdateData);
@@ -269,7 +287,11 @@ class PopupSmarty extends ListViewSmarty{
 	/*
 	 * Setup up the smarty template. we added an extra step here to add the order by from the popupdefs.
 	 */
-	function setup($file) {
+	function setup($seed, $file = null, $where = null, $params = Array(), $offset = 0, $limit = -1, $filter_fields = Array(), $id_field = 'id') {
+		$args = func_get_args();
+		return call_user_func_array(array($this, '_setup'), $args);
+	}
+	function _setup($file) {
 
 	    if(isset($this->_popupMeta)){
 			if(isset($this->_popupMeta['create']['formBase'])) {
@@ -392,7 +414,7 @@ class PopupSmarty extends ListViewSmarty{
         }
 
         /**
-         * Bug #46842 : The relate field field_to_name_array fails to copy over custom fields 
+         * Bug #46842 : The relate field field_to_name_array fails to copy over custom fields
          * By default bean's create_new_list_query function loads fields displayed on the page or used in the search
          * add fields used to populate forms from _viewdefs :: field_to_name_array to retrive from db
          */
@@ -407,7 +429,7 @@ class PopupSmarty extends ListViewSmarty{
                     $this->filter_fields[$add_field] = true;
                 }
             }
-            
+
         }
 
 

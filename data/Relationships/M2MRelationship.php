@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -127,6 +130,29 @@ class M2MRelationship extends SugarRelationship
     {
         $lhsLinkName = $this->lhsLink;
         $rhsLinkName = $this->rhsLink;
+        
+    	/* BEGIN - SECURITY GROUPS */
+    	//Need to hijack this as security groups will not contain a link on the module side
+    	//due to the way the module works. Plus it would remove the relative ease of adding custom module support
+    	
+    	if(get_class($rhs) != 'User' && get_class($rhs) != 'ACLRole' && get_class($lhs) == 'SecurityGroup') {
+			$rhs->$rhsLinkName->addBean($lhs);			
+			$this->callBeforeAdd($rhs, $lhs, $rhsLinkName);
+
+			$dataToInsert = $this->getRowToInsert($lhs, $rhs, $additionalFields);
+			$this->addRow($dataToInsert);
+    		$rhs->$rhsLinkName->addBean($lhs);
+    		$this->callAfterAdd($lhs, $rhs, $lhsLinkName);
+    	} else if(get_class($lhs) != 'User' && get_class($lhs) != 'ACLRole' && get_class($rhs) == 'SecurityGroup') {
+			$lhs->$lhsLinkName->addBean($rhs);			
+			$this->callBeforeAdd($lhs, $rhs, $lhsLinkName);
+
+			$dataToInsert = $this->getRowToInsert($lhs, $rhs, $additionalFields);
+			$this->addRow($dataToInsert);
+    		$lhs->$lhsLinkName->addBean($rhs);
+    		$this->callAfterAdd($rhs, $lhs, $rhsLinkName);
+    	} else {
+    	/* END - SECURITY GROUPS */
 
         if (empty($lhs->$lhsLinkName) && !$lhs->load_relationship($lhsLinkName))
         {
@@ -160,6 +186,10 @@ class M2MRelationship extends SugarRelationship
 
             $this->callAfterAdd($lhs, $rhs, $lhsLinkName);
             $this->callAfterAdd($rhs, $lhs, $rhsLinkName);
+
+        /* BEGIN - SECURITY GROUPS */
+        } //end normal 
+        /* END - SECURITY GROUPS */
 
         return true;
     }
@@ -231,6 +261,51 @@ class M2MRelationship extends SugarRelationship
             $GLOBALS['log']->fatal("RHS is not a SugarBean object");
             return false;
         }
+        
+    	/* BEGIN - SECURITY GROUPS */
+    	//Need to hijack this as security groups will not contain a link on the module side
+    	//due to the way the module works. Plus it would remove the relative ease of adding custom module support
+    	
+    	if(get_class($lhs) == 'SecurityGroup' || get_class($rhs) == 'SecurityGroup') {
+			$dataToRemove = array(
+				$this->def['join_key_lhs'] => $lhs->id,
+				$this->def['join_key_rhs'] => $rhs->id
+			);
+
+
+              if (empty($_SESSION['disable_workflow']) || $_SESSION['disable_workflow'] != "Yes")
+              {
+                  if (get_class($lhs) != 'SecurityGroup' && $lhs->$lhsLinkName instanceof Link2)
+                  {
+                      $lhs->$lhsLinkName->load();
+                      $this->callBeforeDelete($lhs, $rhs, $lhsLinkName);
+                  }
+
+                  if (get_class($rhs) != 'SecurityGroup' && $rhs->$rhsLinkName instanceof Link2)
+                  {
+                      $rhs->$rhsLinkName->load();
+                      $this->callBeforeDelete($rhs, $lhs, $rhsLinkName);
+                  }
+              }
+
+			$this->removeRow($dataToRemove);
+			
+			if (empty($_SESSION['disable_workflow']) || $_SESSION['disable_workflow'] != "Yes")
+			{
+				if (get_class($lhs) != 'SecurityGroup' && $lhs->$lhsLinkName instanceof Link2)
+				{
+					$lhs->$lhsLinkName->load();
+					$this->callAfterDelete($lhs, $rhs, $lhsLinkName);
+				}
+
+				if (get_class($rhs) != 'SecurityGroup' && $rhs->$rhsLinkName instanceof Link2)
+				{
+					$rhs->$rhsLinkName->load();
+					$this->callAfterDelete($rhs, $lhs, $rhsLinkName);
+				}
+			}
+		} else {
+    	/* END - SECURITY GROUPS */        
         if (empty($lhs->$lhsLinkName) && !$lhs->load_relationship($lhsLinkName))
         {
             $GLOBALS['log']->fatal("could not load LHS $lhsLinkName");
@@ -281,6 +356,9 @@ class M2MRelationship extends SugarRelationship
                 $this->callAfterDelete($rhs, $lhs, $rhsLinkName);
             }
         }
+        /* BEGIN - SECURITY GROUPS */
+        } //end normal 
+        /* END - SECURITY GROUPS */
 
         return true;
     }
@@ -336,54 +414,59 @@ class M2MRelationship extends SugarRelationship
             $targetKey = $this->def['join_key_rhs'];
             $relatedSeed = BeanFactory::getBean($this->getRHSModule());
             $relatedSeedKey = $this->def['rhs_key'];
-            if (!empty($params['where']))
+            if (!empty($params['where']) || !empty($params['order_by']))
                 $whereTable = (empty($params['right_join_table_alias']) ? $relatedSeed->table_name : $params['right_join_table_alias']);
-        }
-        else
-        {
+        } else {
             $knownKey = $this->def['join_key_rhs'];
             $targetKey = $this->def['join_key_lhs'];
             $relatedSeed = BeanFactory::getBean($this->getLHSModule());
             $relatedSeedKey = $this->def['lhs_key'];
-            if (!empty($params['where']))
+            if (!empty($params['where']) || !empty($params['order_by']))
                 $whereTable = (empty($params['left_join_table_alias']) ? $relatedSeed->table_name : $params['left_join_table_alias']);
         }
         $rel_table = $this->getRelationshipTable();
 
         $where = "$rel_table.$knownKey = '{$link->getFocus()->id}'" . $this->getRoleWhere();
+        $order_by = '';
 
         //Add any optional where clause
-        if (!empty($params['where'])){
+        if (!empty($params['where'])) {
             $add_where = is_string($params['where']) ? $params['where'] : "$whereTable." . $this->getOptionalWhereClause($params['where']);
             if (!empty($add_where))
-                $where .= " AND $rel_table.$targetKey=$whereTable.id AND $add_where";
+                $where .= " AND $add_where";
+        }
+
+        //Add any optional order clauses
+        if (!empty($params['order_by'])) {
+            $order_by = $relatedSeed->process_order_by($params['order_by']);
         }
 
         $deleted = !empty($params['deleted']) ? 1 : 0;
         $from = $rel_table . " ";
-        if (!empty($params['where'])) {
+        if (!empty($params['where']) || !empty($params['order_by'])) {
             $from .= ", $whereTable";
             if (isset($relatedSeed->custom_fields)) {
                 $customJoin = $relatedSeed->custom_fields->getJOIN();
                 $from .= $customJoin ? $customJoin['join'] : '';
             }
+            $where .= " AND $rel_table.$targetKey=$whereTable.id";
         }
 
         if (empty($params['return_as_array'])) {
             $query = "SELECT $targetKey id FROM $from WHERE $where AND $rel_table.deleted=$deleted";
+            if(!empty($order_by)) $query .= ' ORDER BY '.$order_by;
             //Limit is not compatible with return_as_array
             if (!empty($params['limit']) && $params['limit'] > 0) {
                 $offset = isset($params['offset']) ? $params['offset'] : 0;
                 $query = DBManagerFactory::getInstance()->limitQuery($query, $offset, $params['limit'], false, "", false);
             }
             return $query;
-        }
-        else
-        {
+        } else {
             return array(
                 'select' => "SELECT $targetKey id",
                 'from' => "FROM $from",
                 'where' => "WHERE $where AND $rel_table.deleted=$deleted",
+                'order_by' => $order_by
             );
         }
     }

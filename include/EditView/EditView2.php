@@ -2,36 +2,39 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -737,6 +740,70 @@ class EditView
         $this->th->ss->load_filter('output', 'trimwhitespace');
         $str .= $this->th->displayTemplate($this->module, $form_name, $this->tpl, $ajaxSave, $this->defs);
 
+        /* BEGIN - SECURITY GROUPS */ 
+        //if popup select add panel if user is a member of multiple groups to metadataFile
+        global $sugar_config;
+        if(isset($sugar_config['securitysuite_popup_select']) && $sugar_config['securitysuite_popup_select'] == true
+            && empty($this->focus->fetched_row['id']) && $this->focus->module_dir != "Users" && $this->focus->module_dir != "SugarFeed") {
+
+            //there are cases such as uploading an attachment to an email template where the request module may
+            //not be the same as the current bean module. If that happens we can just skip it
+            //however...let quickcreate through
+            if($this->view != 'QuickCreate' && (empty($_REQUEST['module']) || $_REQUEST['module'] != $this->focus->module_dir)) return $str;
+
+            require_once('modules/SecurityGroups/SecurityGroup.php');
+            $groupFocus = new SecurityGroup();
+            $security_modules = $groupFocus->getSecurityModules();
+            if(in_array($this->focus->module_dir,array_keys($security_modules))) {
+                global $current_user;
+
+                $group_count = $groupFocus->getMembershipCount($current_user->id);
+                if($group_count > 1) {
+                
+                    $groups = $groupFocus->getUserSecurityGroups($current_user->id);
+                    $group_options = '';
+                    foreach($groups as $group) {
+                        $group_options .= '<option value="'.$group['id'].'" label="'.$group['name'].'" selected="selected">'.$group['name'].'</option>';
+                    }
+                    //multilingual support
+                    global $current_language;
+                    $ss_mod_strings = return_module_language($current_language, 'SecurityGroups');  
+                    
+                    $lbl_securitygroups_select = $ss_mod_strings['LBL_GROUP_SELECT'];
+                    $lbl_securitygroups = $ss_mod_strings['LBL_LIST_FORM_TITLE'];
+                    
+                    $group_panel = <<<EOQ
+<div class="edit view edit508 " id="detailpanel_securitygroups">
+    <h4>&nbsp;&nbsp;
+    $lbl_securitygroups_select
+    </h4>
+    <table width="100%" cellspacing="1" cellpadding="0" border="0" class="edit view panelContainer" id="LBL_PANEL_SECURITYGROUPS">
+    <tbody><tr>
+    <td width="12.5%" valign="top" scope="col" id="account_type_label">
+        $lbl_securitygroups:
+    </td>
+    <td width="37.5%" valign="top">
+        <select title="" id="securitygroup_list" name="securitygroup_list[]" multiple="multiple" size="${group_count}">
+        $group_options
+        </select>
+    </td>
+    </tr>
+    </tbody></table>
+</div>
+EOQ;
+                    $group_panel = preg_replace("/[\r\n]+/", "", $group_panel);
+
+                    $group_panel_append = <<<EOQ
+<script>
+    $('#${form_name}_tabs div:first').append($('${group_panel}'));
+</script>
+EOQ;
+                    $str .= $group_panel_append;
+                }
+            }
+        }
+        /* END - SECURITY GROUPS */  
+        
         return $str;
     }
 

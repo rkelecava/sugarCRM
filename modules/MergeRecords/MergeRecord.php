@@ -4,36 +4,39 @@ if (!defined('sugarEntry') || !sugarEntry)
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -70,7 +73,7 @@ class MergeRecord extends SugarBean {
     //store a copy of the merge bean related strings
     var $merge_bean_strings = Array ();
 
-    function MergeRecord($merge_module = '', $merge_id = '') {
+    function __construct($merge_module = '', $merge_id = '') {
         global $sugar_config;
        //parent :: SugarBean();
 
@@ -78,11 +81,26 @@ class MergeRecord extends SugarBean {
             $this->load_merge_bean($merge_module, $merge_id);
     }
 
-    function retrieve($id) {
+    /**
+     * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+     */
+    function MergeRecord($merge_module = '', $merge_id = ''){
+        $deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+        if(isset($GLOBALS['log'])) {
+            $GLOBALS['log']->deprecated($deprecatedMessage);
+        }
+        else {
+            trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+        }
+        self::__construct($merge_module, $merge_id);
+    }
+
+
+    function retrieve($id = -1, $encode=true,$deleted=true) {
         if (isset ($_REQUEST['action']) && $_REQUEST['action'] == 'Step2')
             $this->load_merge_bean($this->merge_bean, false, $id);
         else
-            parent :: retrieve($id);
+            parent :: retrieve($id, $encode, $deleted);
     }
 
     function load_merge_bean($merge_module, $load_module_strings = false, $merge_id = '') {
@@ -99,13 +117,13 @@ class MergeRecord extends SugarBean {
         $this->merge_bean = new $this->merge_bean_class();
         if ($merge_id != '')
             $this->merge_bean->retrieve($merge_id);
-        
+
         // Bug 18853 - Disable this view if the user doesn't have edit and delete permissions
         if ( !$this->merge_bean->ACLAccess('edit') || !$this->merge_bean->ACLAccess('delete') ) {
             ACLController::displayNoAccess();
             sugar_die('');
         }
-        
+
         //load master module strings
         if ($load_module_strings)
             $this->merge_bean_strings = return_module_language($current_language, $merge_module);
@@ -136,7 +154,7 @@ class MergeRecord extends SugarBean {
     //-----------------------------------------------------------------------
     //-------------Wrapping Necessary Merge Bean Calls-----------------------
     //-----------------------------------------------------------------------
-    
+
     function fill_in_additional_list_fields() {
         return $this->merge_bean->fill_in_additional_list_fields();
     }
@@ -172,22 +190,22 @@ class MergeRecord extends SugarBean {
         }
         return false;
     }
-    
-    function ACLAccess($view,$is_owner='not_set'){
+
+    function ACLAccess($view,$is_owner='not_set', $in_group = 'not_set'){
         global $current_user;
 
-        //if the module doesn't implement ACLS or is empty  
+        //if the module doesn't implement ACLS or is empty
         if(empty($this->merge_bean) || !$this->merge_bean->bean_implements('ACL'))
         {
         	return true;
         }
-        
+
         if($is_owner == 'not_set'){
             $is_owner = $this->merge_bean->isOwner($current_user->id);
         }
         return ACLController::checkAccess($this->merge_bean->module_dir,'edit', true);
     }
-    
+
 
     //keep save function to handle anything special on merges
     function save($check_notify = FALSE) {
@@ -199,7 +217,7 @@ class MergeRecord extends SugarBean {
        foreach ($this->merge_bean->field_defs as $key=>$value) {
             $searchFieldString=$key.'SearchField';
             $searchTypeString=$key.'SearchType';
-             
+
             if (isset($search_params[$searchFieldString]) ) {
 
                 if (isset($search_params[$searchFieldString]) == '') {
@@ -217,32 +235,32 @@ class MergeRecord extends SugarBean {
             }
        }
     }
-    
-    function get_inputs_for_search_params($search_params) 
+
+    function get_inputs_for_search_params($search_params)
     {
         $returnString = '';
         foreach ($this->merge_bean->field_defs as $key=>$value) {
             $searchFieldString=$key.'SearchField';
             $searchTypeString=$key.'SearchType';
-            
+
             if (isset($search_params[$searchFieldString]) ) {
                 $returnString .= "<input type='hidden' name='$searchFieldString' value='{$search_params[$searchFieldString]}' />\n";
                 $returnString .= "<input type='hidden' name='$searchTypeString' value='{$search_params[$searchTypeString]}' />\n";
             }
         }
-        
+
         return $returnString;
     }
-    
+
     function email_addresses_query($table, $module, $bean_id) {
     	$query = $table.".id IN (SELECT ear.bean_id FROM email_addresses ea
-									LEFT JOIN email_addr_bean_rel ear ON ea.id = ear.email_address_id 
+									LEFT JOIN email_addr_bean_rel ear ON ea.id = ear.email_address_id
 									WHERE ear.bean_module = '{$module}'
-									AND ear.bean_id != '{$bean_id}' 
+									AND ear.bean_id != '{$bean_id}'
 									AND ear.deleted = 0";
     	return $query;
     }
-    
+
     function release_name_query($search_type, $value) {
     	$this->load_merge_bean2('Releases');
     	if($search_type=='like') {
@@ -293,7 +311,7 @@ class MergeRecord extends SugarBean {
             }
             elseif (isset ($vDefArray['search_type']) && $vDefArray['search_type'] == 'start') {
                 if ($merge_field != "email1" && $merge_field != "email2" && $merge_field !="release_name") {
-            		array_push($where_clauses, $table_name.".".$merge_field." LIKE '".$GLOBALS['db']->quote($vDefArray['value'])."%'"); 
+            		array_push($where_clauses, $table_name.".".$merge_field." LIKE '".$GLOBALS['db']->quote($vDefArray['value'])."%'");
                 }
                 elseif($merge_field =="release_name"){
                         if(isset($vDefArray['value'])){
@@ -321,7 +339,7 @@ class MergeRecord extends SugarBean {
 	                $query = $this->email_addresses_query($table_name, $this->merge_module, $this->merge_bean->id);
 	                $query .= " AND ea.email_address = '".$GLOBALS['db']->quote($vDefArray['value'])."')";
 	                $where_clauses[] = $query;
-                }                
+                }
             }
         }
         // Add ACL Check

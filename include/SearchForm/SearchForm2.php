@@ -2,36 +2,39 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -41,7 +44,7 @@ require_once('include/TemplateHandler/TemplateHandler.php');
 require_once('include/EditView/EditView2.php');
 
 
- class SearchForm extends EditView{
+ class SearchForm{
  	var $seed = null;
  	var $module = '';
  	var $action = 'index';
@@ -78,7 +81,7 @@ require_once('include/EditView/EditView2.php');
      */
     protected $options;
 
-    public function SearchForm($seed, $module, $action = 'index', $options = array())
+    public function __construct($seed, $module, $action = 'index', $options = array())
     {
  		$this->th = new TemplateHandler();
  		$this->th->loadSmarty();
@@ -100,16 +103,31 @@ require_once('include/EditView/EditView2.php');
         $this->setOptions($options);
     }
 
+    /**
+     * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+     */
+    public function SearchForm($seed, $module, $action = 'index', $options = array()){
+        $deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+        if(isset($GLOBALS['log'])) {
+            $GLOBALS['log']->deprecated($deprecatedMessage);
+        }
+        else {
+            trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+        }
+        self::__construct($seed, $module, $action, $options);
+    }
+
+
  	function setup($searchdefs, $searchFields = array(), $tpl, $displayView = 'basic_search', $listViewDefs = array()){
-		$this->searchdefs =  $searchdefs[$this->module];
+		$this->searchdefs =  isset($searchdefs[$this->module]) ? $searchdefs[$this->module] : null;
  		$this->tpl = $tpl;
  		//used by advanced search
  		$this->listViewDefs = $listViewDefs;
  		$this->displayView = $displayView;
  		$this->view = $this->view.'_'.$displayView;
  		$tokens = explode('_', $this->displayView);
+        $this->searchFields = $searchFields[$this->module];
  		$this->parsedView = $tokens[0];
-                $this->searchFields = $searchFields[$this->module];
  		if($this->displayView != 'saved_views'){
  			$this->_build_field_defs();
  		}
@@ -359,7 +377,7 @@ require_once('include/EditView/EditView2.php');
 	function _build_field_defs(){
 		$this->formData = array();
 		$this->fieldDefs = array();
-		foreach($this->searchdefs['layout'][$this->displayView] as $data){
+		foreach((array) $this->searchdefs['layout'][$this->displayView] as $data){
 			if(is_array($data)){
 				//Fields may be listed but disabled so that when they are enabled, they have the correct custom display data.
 				if (isset($data['enabled']) && $data['enabled'] == false)
@@ -640,7 +658,7 @@ require_once('include/EditView/EditView2.php');
 
          //rrs check for team_id
 
-         foreach($this->searchFields as $field=>$parms) {
+         foreach((array) $this->searchFields as $field=>$parms) {
              $customField = false;
              // Jenny - Bug 7462: We need a type check here to avoid database errors
              // when searching for numeric fields. This is a temporary fix until we have
@@ -738,10 +756,21 @@ require_once('include/EditView/EditView2.php');
                          // construct the query for multenums
                          // use the 'like' query as both custom and OOB multienums are implemented with types that cannot be used with an 'in'
                          $operator = 'custom_enum';
-                         $table_name = $this->seed->table_name ;
-                         if ($customField)
-                             $table_name .= "_cstm" ;
-                         $db_field = $table_name . "." . $field;
+			// Relationshipfields get their field name directly from the field name map,
+			// this alias-name is automatically replaced by the join table and rname through sugarbean::create_new_list_query
+			if (isset($this->seed->field_name_map[$field]) &&
+				isset($this->seed->field_name_map[$field]['source']) &&
+				$this->seed->field_name_map[$field]['source'] == 'non-db')
+			{
+				$db_field = $this->seed->field_name_map[$field]['name'];
+			}
+			else
+			{
+				$table_name = $this->seed->table_name ;
+				if ($customField)
+					$table_name .= "_cstm" ;
+				$db_field = $table_name . "." . $field;
+			}
 
                          foreach($parms['value'] as $val) {
                              if($val != ' ' and $val != '') {
@@ -785,26 +814,27 @@ require_once('include/EditView/EditView2.php');
                  }
 
                  //This if-else block handles the shortcut checkbox selections for "My Items" and "Closed Only"
-                 if(!empty($parms['my_items'])) {
-                     if( $parms['value'] == false ) {
+                 if (!empty($parms['my_items'])) {
+                     if ($parms['value'] == false) {
                          continue;
                      } else {
                          //my items is checked.
                          global $current_user;
                          $field_value = $db->quote($current_user->id);
-                         $operator = '=' ;
+                         $operator = '=';
                      }
-                 } else if(!empty($parms['closed_values']) && is_array($parms['closed_values'])) {
-                     if( $parms['value'] == false ) {
+                 } elseif (!empty($parms['closed_values']) && is_array($parms['closed_values'])) {
+                     if ($parms['value'] == false) {
                          continue;
                      } else {
                          $field_value = '';
-                         foreach($parms['closed_values'] as $closed_value)
-                         {
+                         foreach ($parms['closed_values'] as $closed_value) {
                              $field_value .= "," . $db->quoted($closed_value);
                          }
                          $field_value = substr($field_value, 1);
                      }
+                 } elseif (!empty($parms['checked_only']) && $parms['value'] == false) {
+                     continue;
                  }
 
                  $where = '';
@@ -820,7 +850,6 @@ require_once('include/EditView/EditView2.php');
                              if ($type == 'relate' && !empty($this->seed->field_name_map[$field]['link'])
                                  && !empty($this->seed->field_name_map[$field]['rname'])) {
                                      $link = $this->seed->field_name_map[$field]['link'];
-                                     $relname = $link['relationship'];
                                      if (($this->seed->load_relationship($link))){
                                          //Martin fix #27494
                                          $db_field = $this->seed->field_name_map[$field]['name'];
@@ -850,7 +879,8 @@ require_once('include/EditView/EditView2.php');
                             else if(!$customField){
                                 if ( !empty($this->seed->field_name_map[$field]['db_concat_fields']) )
                                     $db_field = $db->concat($this->seed->table_name, $this->seed->field_name_map[$db_field]['db_concat_fields']);
-                                else
+                                // Relationship fields get the name directly from the field_name_map
+                                else if (!(isset($this->seed->field_name_map[$db_field]) && isset($this->seed->field_name_map[$db_field]['source']) && $this->seed->field_name_map[$db_field]['source'] == 'non-db'))
                                     $db_field = $this->seed->table_name .  "." . $db_field;
                              }else{
                                  if ( !empty($this->seed->field_name_map[$field]['db_concat_fields']) )
@@ -1030,10 +1060,10 @@ require_once('include/EditView/EditView2.php');
                                      if(isset($_REQUEST['action']) && $_REQUEST['action'] == 'UnifiedSearch'){
                                          $UnifiedSearch = true;
                                      }
-                                     
+
                                      // If it is a unified search and if the search contains more then 1 word (contains space)
                                      // and if it's the last element from db_field (so we do the concat only once, not for every db_field element)
-                                     // we concat the db_field array() (both original, and in reverse order) and search for the whole string in it  
+                                     // we concat the db_field array() (both original, and in reverse order) and search for the whole string in it
                                      if ( $UnifiedSearch && strpos($field_value, ' ') !== false && strpos($db_field, $parms['db_field'][count($parms['db_field']) - 1]) !== false )
                                      {
                                          // Get the table name used for concat
@@ -1041,7 +1071,7 @@ require_once('include/EditView/EditView2.php');
                                          $concat_table = $concat_table[0];
                                          // Get the fields for concatenating
                                          $concat_fields = $parms['db_field'];
-                                         
+
                                          // If db_fields (e.g. contacts.first_name) contain table name, need to remove it
                                          for ($i = 0; $i < count($concat_fields); $i++)
                                          {
@@ -1050,7 +1080,7 @@ require_once('include/EditView/EditView2.php');
                                          		$concat_fields[$i] = substr($concat_fields[$i], strlen($concat_table) + 1);
                                          	}
                                          }
-                                         
+
                                          // Concat the fields and search for the value
                                          $where .= $this->seed->db->concat($concat_table, $concat_fields) . " LIKE " . $this->seed->db->quoted($field_value . $like_char);
                                          $where .= ' OR ' . $this->seed->db->concat($concat_table, array_reverse($concat_fields)) . " LIKE " . $this->seed->db->quoted($field_value . $like_char);

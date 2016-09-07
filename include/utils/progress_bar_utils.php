@@ -2,63 +2,69 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
 
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 
-function progress_bar_flush()
+function progress_bar_flush($flush=true )
 {
-	if(ob_get_level()) {
-	    @ob_flush();
-	} else {
-        @flush();
-	}
+    if($flush) {
+        if(ob_get_level()) {
+            @ob_flush();
+        } else {
+            @flush();
+        }
+    }
 }
 
-function display_flow_bar($name,$delay, $size=200)
+function display_flow_bar($name, $delay, $size=200, $flush=true)
 {
 	$chunk = $size/5;
 	echo "<div id='{$name}_flow_bar'><table  class='list view' cellpading=0 cellspacing=0><tr><td id='{$name}_flow_bar0' width='{$chunk}px' bgcolor='#cccccc' align='center'>&nbsp;</td><td id='{$name}_flow_bar1' width='{$chunk}px' bgcolor='#ffffff' align='center'>&nbsp;</td><td id='{$name}_flow_bar2' width='{$chunk}px' bgcolor='#ffffff' align='center'>&nbsp;</td><td id='{$name}_flow_bar3' width='{$chunk}px' bgcolor='#ffffff' align='center'>&nbsp;</td><td id='{$name}_flow_bar4' width='{$chunk}px' bgcolor='#ffffff' align='center'>&nbsp;</td></tr></table></div><br>";
 
 	echo str_repeat(' ',256);
 
-	progress_bar_flush();
-	start_flow_bar($name, $delay);
+    progress_bar_flush($flush);
+
+	start_flow_bar($name, $delay, $flush);
 }
 
-function start_flow_bar($name, $delay)
+function start_flow_bar($name, $delay, $flush=true)
 {
 	$delay *= 1000;
 	$timer_id = $name . '_id';
@@ -77,19 +83,19 @@ function start_flow_bar($name, $delay)
 ";
 	echo str_repeat(' ',256);
 
-	progress_bar_flush();
+    progress_bar_flush($flush);
 }
 
-function destroy_flow_bar($name)
+function destroy_flow_bar($name, $flush=true)
 {
 	$timer_id = $name . '_id';
 	echo "<script>clearTimeout($timer_id);document.getElementById('{$name}_flow_bar').innerHTML = '';</script>";
 	echo str_repeat(' ',256);
 
-	progress_bar_flush();
+	progress_bar_flush($flush);
 }
 
-function display_progress_bar($name,$current, $total)
+function display_progress_bar($name,$current, $total, $flush=true)
 {
 	$percent = $current/$total * 100;
 	$remain = 100 - $percent;
@@ -109,10 +115,10 @@ function display_progress_bar($name,$current, $total)
 	}
 	echo str_repeat(' ',256);
 
-	progress_bar_flush();
+	progress_bar_flush($flush);
 }
 
-function update_progress_bar($name,$current, $total)
+function update_progress_bar($name,$current, $total, $flush=true)
 {
 	$percent = $current/$total * 100;
 	$remain = 100 - $percent;
@@ -144,5 +150,5 @@ function update_progress_bar($name,$current, $total)
 		document.getElementById('{$name}_complete_bar').innerHTML = '$status%';
 		document.getElementById('{$name}_remain_bar').width='{$remain}px';
 		</script>";
-	progress_bar_flush();
+	progress_bar_flush($flush);
 }

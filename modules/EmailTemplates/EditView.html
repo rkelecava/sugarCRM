@@ -2,36 +2,39 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -40,17 +43,16 @@
 -->
 <!-- BEGIN: main -->
 <style>
-	#subjectfield { height: 1.6em; }
+	#subjectfield { height: 27px; }
 </style>
 {JAVASCRIPT}
-<script type="text/javascript" src="cache/include/javascript/sugar_grp1.js?v={VERSION_MARK}"></script>
-{JSLANG}
 <script type="text/javascript" language="Javascript" src="modules/Emails/javascript/Email.js?v={VERSION_MARK}"></script>
 <script type="text/javascript" language="Javascript" src="modules/EmailTemplates/EmailTemplate.js?v={VERSION_MARK}"></script>
+<script type="text/javascript" src="cache/include/javascript/sugar_grp1.js?v={VERSION_MARK}"></script>
 <script type="text/javascript">
 	{FIELD_DEFS_JS}
 </script>
-
+{JSLANG}
 <form name="EditView" id="EditView" method="POST" action="index.php" enctype="multipart/form-data">
 	<input type="hidden" name="module" value="EmailTemplates">
 	<input type="hidden" name="record" value="{ID}">
@@ -186,17 +188,18 @@
 
 <!-- BEGIN: textarea -->
 						<td colspan="4" >
+							{BODY_MOZAIK}
 							<div id='body_text_div'>
-							<textarea id='body_text' tabindex='0' name='body_html' cols="100" rows="20">{BODY_HTML}</textarea>
+								<textarea id='body_text' tabindex='0' name='body_html' cols="100" rows="40" style="display: none;">{BODY_HTML}</textarea>
 							</div>
-                            <br>
+							<br>
 							<div id='toggle_textarea_option'>
-                                <input id='toggle_textarea_elem' onclick="toggle_textarea_edit(this);" type="button" name="toggle_html" value="{MOD.LBL_EDIT_ALT_TEXT}" />
-                            </div>
-                            <br>
-                            <div id="text_div" style="display: none">
-                                <textarea tabindex='0' name='body' cols="100" rows="20" >{BODY}</textarea>
-                            </div>
+								<input id='toggle_textarea_elem' onclick="toggle_textarea_edit(this);" type="button" name="toggle_html" value="{MOD.LBL_EDIT_ALT_TEXT}"/>
+							</div>
+							<br>
+							<div id="text_div" style="display: none">
+								<textarea id='body_text_plain'  tabindex='0' name='body' cols="100" rows="40" >{BODY}</textarea>
+							</div>
 						</td>
 <!-- END: textarea -->
 					</tr>
@@ -230,7 +233,6 @@
 	</div>
 </form>
 <!-- END: NoInbound3 -->
-{tiny}
 <script type="text/javascript" language="javascript">
 <!-- BEGIN: NoInbound4 -->
 toggle_textarea_elem_values = ['{MOD.LBL_EDIT_ALT_TEXT}', '{MOD.LBL_HIDE_ALT_TEXT}'];

@@ -4,9 +4,6 @@
 
 Modification information for LGPL compliance
 
-Wed May 5 2016 jvink - BR-4172 - Remove Imagick section to embed images to
-                       prevent any attack vectors as per CVE-2016-3714.
-
 Fri Dec 2 2011 smalyshev - Added unserialize/destruct vulnerability protection
 
 Mon May 30 16:16:13 2011 +0300 - alex-vlasov - Bug 41216 - currency is displayed on 2 lines instead of one when printing a quote to PDF

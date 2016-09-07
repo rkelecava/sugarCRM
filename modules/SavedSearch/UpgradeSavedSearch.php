@@ -3,42 +3,45 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 class UpgradeSavedSearch {
 
-	function UpgradeSavedSearch() {
-		
+	function __construct() {
+
 		$result = $GLOBALS['db']->query("SELECT id FROM saved_search");
 		while($row = $GLOBALS['db']->fetchByAssoc($result)) {
 		      $focus = new SavedSearch();
@@ -51,36 +54,36 @@ class UpgradeSavedSearch {
 			  	 $module = $contents['search_module'];
 			  	 $advanced = !empty($contents['advanced']);
 			  	 $field_map = array();
-			  	 
+
 			  	 if(file_exists("custom/modules/{$module}/metadata/searchdefs.php")) {
 			  	 	require("custom/modules/{$module}/metadata/searchdefs.php");
-			  	 	$field_map = $advanced ? $searchdefs[$module]['layout']['advanced_search'] : $searchdefs[$module]['layout']['basic_search'];			  	 
+			  	 	$field_map = $advanced ? $searchdefs[$module]['layout']['advanced_search'] : $searchdefs[$module]['layout']['basic_search'];
 			     }else if(file_exists("modules/{$module}/metadata/SearchFields.php")) {
 			  	 	require("modules/{$module}/metadata/SearchFields.php");
 			  	 	$field_map = $searchFields[$module];
 			  	 } else {
-				  	
+
 				  	$bean = loadBean($module);
-				  	$field_map = $bean->field_name_map;	 	 
+				  	$field_map = $bean->field_name_map;
 			  	 }
 
 			  	 //Special case for team_id field (from 4.5.x)
 			  	 if(isset($contents['team_id'])) {
 			  	    $contents['team_name'] = $contents['team_id'];
-			  	    unset($contents['team_id']);	
+			  	    unset($contents['team_id']);
 			  	 }
-			  	 
+
 			  	 foreach($contents as $key=>$value) {
 			  	 	 if(isset($field_map[$key])) {
 			  	 	 	$new_key = $key . ($advanced ? '_advanced' : '_basic');
 			  	 	    if(preg_match('/^team_name_(advanced|basic)$/', $new_key)) {
-			  	 	 	   
+
 			  	 	       if(!is_array($value)) {
 			  	 	       	  $temp_value = array();
 			  	 	       	  $teap_value[] = $value;
 			  	 	       	  $value = $temp_value;
 			  	 	       }
-			  	 	    
+
 			  	 	       $team_results = $GLOBALS['db']->query("SELECT id, name FROM teams where id in ('" . implode("','", $value) . "')");
 			  	 	       if(!empty($team_results)) {
 			  	 	       	  $count = 0;
@@ -91,14 +94,14 @@ class UpgradeSavedSearch {
 				  	 	       	 	$count++;
 			  	 	       	  } //while
 			  	 	       } //if
-			  	 	       
-			  	 	       
+
+
 			  	 	       //Unset the original key
 			  	 	       unset($new_contents[$key]);
-			  	 	       
+
 			  	 	       //Add the any switch
 			  	 	       $new_contents[$new_key . '_type'] = 'any';
-			  	 	 	} else {			  	 	 	
+			  	 	 	} else {
 			  	 	 	   $new_contents[$new_key] = $value;
 			  	 	 	}
 			  	 	 } else {
@@ -119,11 +122,26 @@ class UpgradeSavedSearch {
 				  	 	$contents['team_name_advanced_type'] = 'any';
 				  	 	unset($contents['team_name_advanced']);
 					  	$content = base64_encode(serialize($contents));
-					  	$GLOBALS['db']->query("UPDATE saved_search SET contents = '{$content}' WHERE id = '{$row['id']}'"); 				  	 	
+					  	$GLOBALS['db']->query("UPDATE saved_search SET contents = '{$content}' WHERE id = '{$row['id']}'");
 			  	 	}
-			  	 } 				
+			  	 }
 			}
 		} //while
 	}
+
+	/**
+	 * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+	 */
+	public function UpgradeSavedSearch(){
+		$deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+		if(isset($GLOBALS['log'])) {
+			$GLOBALS['log']->deprecated($deprecatedMessage);
+		}
+		else {
+			trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+		}
+		self::__construct();
+	}
+
 }
 ?>

@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -134,7 +137,7 @@ EOQ;
 	}
 
 
-	function handleSave($prefix,$redirect=true, $useRequired=false)
+	function handleSave($prefix,$redirect=true, $useRequired=false, $useSiteURL = false, $entryPoint = 'download', $useUploadFolder = false)
 	{
 		require_once('include/formbase.php');
 		require_once('include/upload_file.php');
@@ -143,64 +146,100 @@ EOQ;
 		global $sugar_config;
 
 		$focus = new EmailTemplate();
-		if($useRequired && !checkRequired($prefix, array_keys($focus->required_fields))) {
+		if ($useRequired && !checkRequired($prefix, array_keys($focus->required_fields))) {
 			return null;
 		}
 		$focus = populateFromPost($prefix, $focus);
-        //process the text only flag
-        if(isset($_POST['text_only']) && ($_POST['text_only'] == '1')){
-            $focus->text_only = 1;
-        }else{
-            $focus->text_only = 0;
-        }
-		if(!$focus->ACLAccess('Save')) {
+		//process the text only flag
+		if (isset($_POST['text_only']) && ($_POST['text_only'] == '1')) {
+			$focus->text_only = 1;
+		} else {
+			$focus->text_only = 0;
+		}
+		if (!$focus->ACLAccess('Save')) {
 			ACLController::displayNoAccess(true);
 			sugar_cleanup(true);
 		}
-		if(!isset($_REQUEST['published'])) $focus->published = 'off';
+		if (!isset($_REQUEST['published'])) $focus->published = 'off';
 
+		$this->handleAttachmentsProcessImages($focus, $redirect, $useSiteURL, $entryPoint, $useUploadFolder);
+		return $focus;
+	}
+
+	public function handleAttachmentsProcessImages($focus, $redirect, $useSiteURL = false, $entryPoint = 'download', $useUploadFolder = false) {
+		$return_id = $this->processImages($focus, $useSiteURL, $entryPoint, $useUploadFolder);
+		return $this->handleAttachments($focus, $redirect, $return_id);
+	}
+
+	public function processImages(&$focus, $useSiteURL, $entryPoint, $useUploadFolder) {
+		global $sugar_config;
 		$preProcessedImages = array();
 		$emailTemplateBodyHtml = from_html($focus->body_html);
-		if(strpos($emailTemplateBodyHtml, '"cache/images/')) {
+		if (strpos($emailTemplateBodyHtml, '"cache/images/')) {
 			$matches = array();
 			preg_match_all('#<img[^>]*[\s]+src[^=]*=[\s]*["\']cache/images/(.+?)["\']#si', $emailTemplateBodyHtml, $matches);
-			foreach($matches[1] as $match) {
+			foreach ($matches[1] as $match) {
 				$filename = urldecode($match);
-                if($filename != pathinfo($filename, PATHINFO_BASENAME)) {
-                    // don't allow paths there
-                    $emailTemplateBodyHtml = str_replace("cache/images/$match", "", $emailTemplateBodyHtml);
-                    continue;
-                }
+				if ($filename != pathinfo($filename, PATHINFO_BASENAME)) {
+					// don't allow paths there
+					$emailTemplateBodyHtml = str_replace("cache/images/$match", "", $emailTemplateBodyHtml);
+					continue;
+				}
 				$file_location = sugar_cached("images/{$filename}");
 				$mime_type = pathinfo($filename, PATHINFO_EXTENSION);
 
-				if(file_exists($file_location)) {
-					$id = create_guid();
+				if (file_exists($file_location)) {
+					//$id = create_guid();
+
+					$note = new Note();
+					$note->save();
+					$id = $note->id;
+
 					$newFileLocation = "upload://$id";
-					if(!copy($file_location, $newFileLocation)) {
+					if (!copy($file_location, $newFileLocation)) {
 						$GLOBALS['log']->debug("EMAIL Template could not copy attachment to $newFileLocation");
 					} else {
-						$secureLink = "index.php?entryPoint=download&type=Notes&id={$id}";
-					    $emailTemplateBodyHtml = str_replace("cache/images/$match", $secureLink, $emailTemplateBodyHtml);
-						unlink($file_location);
+						if($useUploadFolder) {
+							$secureLink = ($useSiteURL ? $sugar_config['site_url'] . '/' : '') . "public/{$id}";
+							// create a copy with correct extension by mime type
+							if(!file_exists('public')) {
+								sugar_mkdir('public', 777);
+							}
+							if(copy($file_location, "public/{$id}.{$mime_type}")) {
+								$secureLink .= ".{$mime_type}";
+							}
+						}
+						else {
+							$secureLink = ($useSiteURL ? $sugar_config['site_url'] . '/' : '') . "index.php?entryPoint=" . $entryPoint . "&type=Notes&id={$id}&filename=" . $match;
+						}
+
+						$emailTemplateBodyHtml = str_replace("cache/images/$match", $secureLink, $emailTemplateBodyHtml);
+						//unlink($file_location);
 						$preProcessedImages[$filename] = $id;
 					}
 				} // if
 			} // foreach
 		} // if
 		if (isset($GLOBALS['check_notify'])) {
-            $check_notify = $GLOBALS['check_notify'];
-        }
-        else {
-            $check_notify = FALSE;
-        }
-        $focus->body_html = $emailTemplateBodyHtml;
-        $return_id = $focus->save($check_notify);
+			$check_notify = $GLOBALS['check_notify'];
+		} else {
+			$check_notify = FALSE;
+		}
+		if($preProcessedImages) {
+			$focus->body_html = $emailTemplateBodyHtml;
+		}
+		$return_id = $focus->save($check_notify);
+		return $return_id;
+	}
+
+	public function handleAttachments($focus, $redirect, $return_id) {
 		///////////////////////////////////////////////////////////////////////////////
 		////	ATTACHMENT HANDLING
 
 		///////////////////////////////////////////////////////////////////////////
 		////	ADDING NEW ATTACHMENTS
+
+		global $mod_strings;
 
 		$max_files_upload = count($_FILES);
 
@@ -208,7 +247,7 @@ EOQ;
 			$note = new Note();
 			$where = "notes.parent_id='{$focus->id}'";
 			if(!empty($_REQUEST['old_id'])) { // to support duplication of email templates
-				$where .= " OR notes.parent_id='".$_REQUEST['old_id']."'";
+				$where .= " OR notes.parent_id='".htmlspecialchars($_REQUEST['old_id'], ENT_QUOTES)."'";
 			}
 			$notes_list = $note->get_full_list("", $where, true);
 		}
@@ -277,6 +316,11 @@ EOQ;
 					$newNote->new_with_id = true;
 					$newNote->date_modified = '';
 					$newNote->date_entered = '';
+					/* BEGIN - SECURITY GROUPS */
+					//Need to do this so that attachments show under an EmailTemplate correctly for a normal user
+					global $current_user;
+					$newNote->assigned_user_id = $current_user->id;
+					/* END - SECURITY GROUPS */
 					$newNoteId = $newNote->save();
 
 					UploadFile::duplicate_file($note->id, $newNoteId, $note->filename);
@@ -286,6 +330,11 @@ EOQ;
 			$note->parent_id = $focus->id;
 			$note->parent_type = 'Emails';
 			$note->file_mime_type = $note->file->mime_type;
+			/* BEGIN - SECURITY GROUPS */
+			//Need to do this so that attachments show under an EmailTemplate correctly for a normal user
+			global $current_user;
+			$note->assigned_user_id = $current_user->id;
+			/* END - SECURITY GROUPS */
 			$note_id = $note->save();
 			array_push($focus->saved_attachments, $note);
 			$note->id = $note_id;

@@ -3,40 +3,50 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
  
 $mod_strings = array (
+
+	'LBL_MODULE_NAME' => 'Calendar',
+	'LBL_AGENDADAY' => 'Day',
+	'LBL_AGENDAWEEK' => 'Week',
+	'LBL_SHAREDWEEK' => 'Shared Week',
+	'LBL_SHAREDMONTH' => 'Shared Month',
+
 
 	'LBL_MODULE_NAME' => 'Calendar',
 	'LBL_MODULE_TITLE' => 'Calendar',
@@ -52,9 +62,9 @@ $mod_strings = array (
 	'LNK_IMPORT_MEETINGS' => 'Import Meetings',
 	'LNK_IMPORT_TASKS' => 'Import Tasks',
 	'LBL_MONTH' => 'Month',
-	'LBL_DAY' => 'Day',
+	'LBL_AGENDADAY' => 'Day',
 	'LBL_YEAR' => 'Year',
-	'LBL_WEEK' => 'Week',
+	'LBL_AGENDAWEEK' => 'Week',
 	'LBL_PREVIOUS_MONTH' => 'Previous Month',
 	'LBL_PREVIOUS_DAY' => 'Previous Day',
 	'LBL_PREVIOUS_YEAR' => 'Previous Year',
@@ -125,6 +135,7 @@ $mod_strings = array (
 	'LBL_SETTINGS_CALLS_SHOW' => 'Show Calls:',
 	'LBL_SETTINGS_TASKS_SHOW' => 'Show Tasks:',
     'LBL_SETTINGS_COMPLETED_SHOW' => 'Show Completed Meetings, Calls and Tasks:',
+    'LBL_SETTINGS_DISPLAY_SHARED_CALENDAR_SEPARATE' => 'Shared Calendar Separate:',
 
 	'LBL_SAVE_BUTTON' => 'Save',
 	'LBL_DELETE_BUTTON' => 'Delete',
@@ -154,6 +165,9 @@ $mod_strings = array (
 	'LBL_DATE_END_ERROR' => 'End date is before start date',
 	'ERR_YEAR_BETWEEN' => 'Sorry, calendar cannot handle the year you requested<br>Year must be between 1970 and 2037',
 	'ERR_NEIGHBOR_DATE' => 'get_neighbor_date_str: not defined for this view',
+    'LBL_NO_ITEMS_MOBILE' => 'Your calendar is clear for the week.',
+    'LBL_GENERAL_SETTINGS' => 'General Settings',
+    'LBL_COLOR_SETTINGS' => 'Colour Settings',
 
 );
 

@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 $GLOBALS['studioReadOnlyFields'] = array('date_entered'=>1, 'date_modified'=>1, 'created_by'=>1, 'id'=>1, 'modified_user_id'=>1);
@@ -62,7 +65,8 @@ class TemplateField{
 	var $ext3 = '';
 	var $ext4 = '';
 	var $audited= 0;
-	var $massupdate = 0;
+    var $inline_edit = 1;
+    var $massupdate = 0;
 	var $importable = 'true' ;
 	var $duplicate_merge=0;
 	var $new_field_definition;
@@ -85,6 +89,7 @@ class TemplateField{
 		'required'=>'required',
 		'type'=>'type',
 		'audited'=>'audited',
+		'inline_edit'=>'inline_edit',
 		'massupdate'=>'massupdate',
 		'options'=>'ext1',
 		'help'=>'help',
@@ -104,6 +109,10 @@ class TemplateField{
     // Bug #48826
     // fields to decode from post request
     var $decode_from_request_fields_map = array('formula', 'dependency');
+
+    function __construct(){
+    }
+
 	/*
 		HTML FUNCTIONS
 		*/
@@ -340,7 +349,8 @@ class TemplateField{
 			'duplicate_merge'=>$this->duplicate_merge,
 			'duplicate_merge_dom_value'=> $this->getDupMergeDomValue(),
 			'audited'=>$this->convertBooleanValue($this->audited),
-			'reportable'=>$this->convertBooleanValue($this->reportable),
+            'inline_edit'=>$this->convertBooleanValue($this->inline_edit),
+            'reportable'=>$this->convertBooleanValue($this->reportable),
             'unified_search'=>$this->convertBooleanValue($this->unified_search),
             'merge_filter' => empty($this->merge_filter) ? "disabled" : $this->merge_filter
 		);
@@ -476,7 +486,7 @@ class TemplateField{
 	function populateFromPost(){
 		foreach($this->vardef_map as $vardef=>$field){
 
-			if(isset($_REQUEST[$vardef])){		    
+			if(isset($_REQUEST[$vardef])){
                 $this->$vardef = $_REQUEST[$vardef];
 
                 //  Bug #48826. Some fields are allowed to have special characters and must be decoded from the request
@@ -491,7 +501,10 @@ class TemplateField{
                 if($field == 'help' && !empty($this->$vardef))
                 {
                     $help = htmlspecialchars_decode($this->$vardef, ENT_QUOTES);
-                    $this->$vardef = htmlentities(remove_xss($help));
+
+					// Fix for issue #1170 - text in studio can't accept the special language characters.
+					//$this->$vardef = htmlentities(remove_xss($help));
+					$this->$vardef = htmlspecialchars(remove_xss($help));
                 }
 
 

@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -92,13 +95,13 @@ class Bug extends SugarBean {
 	var $type;
 
 	//BEGIN Additional fields being added to Bugs
-	
+
 	var $fixed_in_release;
 	var $work_log;
 	var $source;
 	var $product_category;
 	//END Additional fields being added to Bugs
-	
+
 	var $module_dir = 'Bugs';
 	var $table_name = "bugs";
 	var $rel_account_table = "accounts_bugs";
@@ -114,9 +117,9 @@ class Bug extends SugarBean {
 									'task_id'=>'tasks', 'note_id'=>'notes', 'meeting_id'=>'meetings',
 									'call_id'=>'calls', 'email_id'=>'emails');
 
-	function Bug() {
-		parent::SugarBean();
-		
+    public function __construct() {
+		parent::__construct();
+
 
 		$this->setupCustomFields('Bugs');
 
@@ -127,11 +130,25 @@ class Bug extends SugarBean {
 
 	}
 
+	/**
+	 * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+	 */
+	public function Bug(){
+		$deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+		if(isset($GLOBALS['log'])) {
+			$GLOBALS['log']->deprecated($deprecatedMessage);
+		}
+		else {
+			trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+		}
+		self::__construct();
+	}
+
 	var $new_schema = true;
 
-	
 
-	
+
+
 
 	function get_summary_text()
 	{
@@ -139,21 +156,21 @@ class Bug extends SugarBean {
 	}
 
 	function create_list_query($order_by, $where, $show_deleted = 0)
-	{		
+	{
 		// Fill in the assigned_user_name
 //		$this->assigned_user_name = get_assigned_user_name($this->assigned_user_id);
 
         $custom_join = $this->getCustomJoin();
-		
+
                 $query = "SELECT ";
-                
+
 		$query .= "
                                bugs.*
 
                                 ,users.user_name as assigned_user_name, releases.id release_id, releases.name release_name";
         $query .= $custom_join['select'];
                                 $query .= " FROM bugs ";
-                               
+
 
 		$query .= "				LEFT JOIN releases ON bugs.found_in_release=releases.id
 								LEFT JOIN users
@@ -164,9 +181,9 @@ class Bug extends SugarBean {
 			if($show_deleted == 0){
             	$where_auto = " $this->table_name.deleted=0 ";
 			}else if($show_deleted == 1){
-				$where_auto = " $this->table_name.deleted=1 ";	
+				$where_auto = " $this->table_name.deleted=1 ";
 			}
-          
+
 
 		if($where != "")
 			$query .= "where $where AND ".$where_auto;
@@ -182,7 +199,7 @@ class Bug extends SugarBean {
 		return $query;
 	}
 
-        function create_export_query(&$order_by, &$where, $relate_link_join='')
+        function create_export_query($order_by, $where, $relate_link_join='')
         {
             $custom_join = $this->getCustomJoin(true, true, $where);
             $custom_join['join'] .= $relate_link_join;
@@ -219,13 +236,13 @@ class Bug extends SugarBean {
 		parent::fill_in_additional_list_fields();
 		// Fill in the assigned_user_name
 		//$this->assigned_user_name = get_assigned_user_name($this->assigned_user_id);
-		
+
 //	   $this->set_fixed_in_release();
 	}
 
 	function fill_in_additional_detail_fields()
-	{   
-		
+	{
+
 	    /*
 		// Fill in the assigned_user_name
 		$this->assigned_user_name = get_assigned_user_name($this->assigned_user_id);
@@ -238,10 +255,10 @@ class Bug extends SugarBean {
 	}
 
 
-	public function set_release() 
+	public function set_release()
 	{
 	    static $releases;
-	    
+
 	    if ( empty($this->found_in_release) ) {
 	        return;
 	    }
@@ -249,7 +266,7 @@ class Bug extends SugarBean {
 	        $this->release_name = $releases[$this->found_in_release];
 	        return;
 	    }
-	    
+
 		$query = "SELECT r1.name from releases r1, $this->table_name i1 where r1.id = i1.found_in_release and i1.id = '$this->id' and i1.deleted=0 and r1.deleted=0";
         $result = $this->db->query($query,true," Error filling in additional detail fields: ");
 
@@ -264,15 +281,15 @@ class Bug extends SugarBean {
         {
             $this->release_name = '';
         }
-        
+
         $releases[$this->found_in_release] = $this->release_name;
 	}
 
-	
-	public function set_fixed_in_release() 
+
+	public function set_fixed_in_release()
 	{
 	    static $releases;
-	    
+
 	    if ( empty($this->fixed_in_release) ) {
 	        return;
 	    }
@@ -280,15 +297,15 @@ class Bug extends SugarBean {
 	        $this->fixed_in_release_name = $releases[$this->fixed_in_release];
 	        return;
 	    }
-	    
+
         $query = "SELECT r1.name from releases r1, $this->table_name i1 where r1.id = i1.fixed_in_release and i1.id = '$this->id' and i1.deleted=0 and r1.deleted=0";
         $result = $this->db->query($query,true," Error filling in additional detail fields: ");
 
         // Get the id and the name.
         $row = $this->db->fetchByAssoc($result);
 
-        
-        
+
+
         if($row != null)
         {
             $this->fixed_in_release_name = $row['name'];
@@ -297,12 +314,12 @@ class Bug extends SugarBean {
         {
             $this->fixed_in_release_name = '';
         }
-			
+
         $releases[$this->fixed_in_release] = $this->fixed_in_release_name;
-			
+
 	}
-	
-	
+
+
 	function get_list_view_data(){
 		global $current_language;
 		$the_array = parent::get_list_view_data();
@@ -310,18 +327,18 @@ class Bug extends SugarBean {
 		$mod_strings = return_module_language($current_language, 'Bugs');
 
 		$this->set_release();
-	    
+
         // The new listview code only fetches columns that we're displaying and not all
-        // the columns so we need these checks. 
+        // the columns so we need these checks.
 	   $the_array['NAME'] = (($this->name == "") ? "<em>blank</em>" : $this->name);
         $the_array['PRIORITY'] = empty($this->priority)? "" : (!isset($app_list_strings[$this->field_name_map['priority']['options']][$this->priority]) ? $this->priority : $app_list_strings[$this->field_name_map['priority']['options']][$this->priority]);
         $the_array['STATUS'] = empty($this->status)? "" : (!isset($app_list_strings[$this->field_name_map['status']['options']][$this->status]) ? $this->status : $app_list_strings[$this->field_name_map['status']['options']][$this->status]);
         $the_array['TYPE'] = empty($this->type)? "" : (!isset($app_list_strings[$this->field_name_map['type']['options']][$this->type]) ? $this->type : $app_list_strings[$this->field_name_map['type']['options']][$this->type]);
-       
+
 	   $the_array['RELEASE']= $this->release_name;
 	   $the_array['BUG_NUMBER'] = $this->bug_number;
 	   $the_array['ENCODED_NAME']=$this->name;
-    			
+
     	return  $the_array;
 	}
 
@@ -362,14 +379,14 @@ class Bug extends SugarBean {
 		$xtpl->assign("BUG_BUG_NUMBER", $bug->bug_number);
 		return $xtpl;
 	}
-	
+
 	function bean_implements($interface){
 		switch($interface){
 			case 'ACL':return true;
 		}
 		return false;
 	}
-	
+
 	function save($check_notify = FALSE){
 		return parent::save($check_notify);
 	}

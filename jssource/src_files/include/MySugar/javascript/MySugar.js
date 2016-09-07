@@ -1,37 +1,41 @@
-/*********************************************************************************
+/**
+ *
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+ *
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by SalesAgility Ltd.
+ * Copyright (C) 2011 - 2016 SalesAgility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
- ********************************************************************************/
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
+ */
 
 
 
@@ -202,7 +206,8 @@ SUGAR.mySugar = function() {
 		 * @param function callback callback function after refresh
 		 * @param bool dynamic does the script load dynamic javascript, set to true if you user needs to refresh the dashlet after load
 		 */
-		retrieveDashlet: function(id, url, callback, dynamic) {
+		retrieveDashlet: function(id, url, callback, dynamic, isPagination) {
+			var _isPagination = typeof isPagination == 'undefined' ? false : isPagination;
 			ajaxStatus.showStatus(SUGAR.language.get('app_strings', 'LBL_LOADING'));
 					
 			if(!url) {
@@ -230,14 +235,18 @@ SUGAR.mySugar = function() {
                     current_dashlet_id = SUGAR.mySugar.currentDashlet.getAttribute('id');
 
                     //lets extract the guid portion of the id, to use as a reference
-                    dashlet_guid =  current_dashlet_id.substr('dashlet_entire'.length);
+                    dashlet_guid =  current_dashlet_id.substr('dashlet_entire_'.length);
 
                     //now that we have the guid portion, let's search the returned text for it.  There should be many references to it.
                     if(data.responseText.indexOf(dashlet_guid)<0 &&  data.responseText != SUGAR.language.get('app_strings', 'LBL_RELOAD_PAGE') ){
                         //guid id was not found in the returned html, that means we have stale dashlet info due to an auto refresh, do not update
                         return false;
                     }
-					SUGAR.mySugar.currentDashlet.innerHTML = data.responseText;			
+					if(_isPagination) {
+						$('#' + SUGAR.mySugar.currentDashlet.id).closest('.tab-pane').html(data.responseText);
+					} else {
+						SUGAR.mySugar.currentDashlet.innerHTML = data.responseText;
+					}
 				}
 
 				SUGAR.util.evalScript(data.responseText);
@@ -256,6 +265,8 @@ SUGAR.mySugar = function() {
 					var chartScriptObj = YAHOO.util.Connect.asyncRequest('GET', scriptUrl,
 													  {success: processChartScript, failure: processChartScript}, null);
 				}
+
+				$(window).resize();
 			}
 			
 			SUGAR.mySugar.currentDashlet = document.getElementById('dashlet_entire_' + id);
@@ -369,7 +380,8 @@ SUGAR.mySugar = function() {
 					anim.animate();
 					
 					newLayout =	SUGAR.mySugar.getLayout(true);
-					SUGAR.mySugar.saveLayout(newLayout);	
+					SUGAR.mySugar.saveLayout(newLayout);
+					SUGAR.mySugar.retrieveCurrentPage();
 //					window.setTimeout('ajaxStatus.hideStatus()', 2000);
 				}
 				
@@ -405,6 +417,11 @@ SUGAR.mySugar = function() {
             }));
 
 			return false;
+		},
+
+		retrieveCurrentPage: function() {
+			var pageNum = parseInt($('ul.nav.nav-tabs.nav-dashboard li.active a').first().attr('id').substring(3));
+			retrievePage(pageNum);
 		},
 		
 		showDashletsDialog: function() {                                             
@@ -632,9 +649,13 @@ SUGAR.mySugar = function() {
 			return false;
 		},
 
-		
-		
-		
+
+		refreshPageForAnalytics: function() {
+			window.location.reload();
+			return false;
+		},
+
+
 		renderDashletsDialog: function(){	
             var minHeight = 120;
             var maxHeight = 520;

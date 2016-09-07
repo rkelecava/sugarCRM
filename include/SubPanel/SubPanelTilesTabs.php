@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 require_once('include/SubPanel/SubPanel.php');
@@ -45,7 +48,7 @@ require_once('include/SubPanel/SubPanelTiles.php');
 class SubPanelTilesTabs extends SubPanelTiles
 {
 
-	function SubPanelTiles(&$focus, $layout_def_key='', $layout_def_override = '')
+	function __construct(&$focus, $layout_def_key='', $layout_def_override = '')
 	{
 
 		$this->focus = $focus;
@@ -101,7 +104,11 @@ class SubPanelTilesTabs extends SubPanelTiles
      * @param boolean $showTabs	Call the view code to display the generated tabs
      * @param string $selectedGroup	(Optional) Name of any selected tab (defaults to 'All')
      */
-	function getTabs($tabs, $showTabs = true, $selectedGroup='All')
+    function getTabs($showTabs = true, $selectedGroup='') {
+        $args = func_get_args();
+        return call_user_func_array(array($this, '_getTabs'), $args);
+    }
+    function _getTabs($tabs, $showTabs = true, $selectedGroup='All')
     {
         //WDong Bug: 12258 "All" tab in the middle of a record's detail view is not localized.
         if($selectedGroup=='All')
@@ -196,7 +203,7 @@ class SubPanelTilesTabs extends SubPanelTiles
             $displayTabs = array();
             $otherTabs = array();
 
-    	    foreach ($groups as $key=>$tab)
+    	    foreach ($groups as $key => $tab)
     		{
                 $display = false;
                 foreach($tab['modules'] as $subkey=>$subtab)
@@ -219,10 +226,10 @@ class SubPanelTilesTabs extends SubPanelTiles
                 {
                     $relevantTabs = SubPanelTilesTabs::applyUserCustomLayoutToTabs($tabs, $key);
 
-                    $sugarTabs[$key] = array(//'url'=>'index.php?module=' . $_REQUEST['module'] . '&record=' . $_REQUEST['record'] . '&action=' . $_REQUEST['action']. '&subpanel=' . $key.'#tabs',
-                                         //'url'=>"javascript:SUGAR.util.retrieveAndFill('index.php?to_pdf=1&module=MySettings&action=LoadTabSubpanels&loadModule={$_REQUEST['module']}&record={$_REQUEST['record']}&subpanel=$key','subpanel_list',null,null,null);",
-                                         'label'=>( !empty($tab['label']) ? $tab['label']: $key ),
-                                         'type'=>$selected);
+                    $sugarTabs[$key] = array(
+                             'label'=>( !empty($tab['label']) ? $tab['label']: $key ),
+                             'type'=>$selected
+                    );
 
                     $otherTabs[$key] = array('key'=>$key, 'tabs'=>array());
 
@@ -262,7 +269,8 @@ class SubPanelTilesTabs extends SubPanelTiles
             $retTabs = array_intersect($tabs, array_map('strtolower', $groups[$selectedGroup]['modules']));
         }
 
-		return $retTabs;
+        // Use javascript to filter tabs.
+		return $tabs;
 	}
 }
 ?>

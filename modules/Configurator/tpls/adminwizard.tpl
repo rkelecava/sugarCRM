@@ -2,36 +2,39 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 *}
@@ -144,9 +147,55 @@ function disableReturnSubmission(e) {
                 onclick="SugarWizard.changeScreen('welcome',true);" id="previous_tab_welcome" />&nbsp;
             <input title="{$MOD.LBL_WIZARD_NEXT_BUTTON}"
                 class="button primary" type="button" name="next_tab1" value="  {$MOD.LBL_WIZARD_NEXT_BUTTON}  "
+            {if $silentInstall}
+                onclick="SugarWizard.changeScreen('scenarios',false);" id="next_tab_scenarios" />
+            {else}
                 onclick="SugarWizard.changeScreen('locale',false);" id="next_tab_locale" />
+            {/if}
     </div>
 </div>
+
+<!-- move of scenarios from the user wizard to the admin wizard -->
+<div id="scenarios" class="screen">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+            <td>
+                <div class="edit view">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <th width="100%" align="left" scope="row" colspan="4">
+                                <h2><slot>{$MOD.LBL_WIZARD_SCENARIOS}</slot></h2>
+                            </th>
+                        </tr>
+                        <tr>
+                            <td align="left" scope="row" colspan="4"><i>{$MOD.LBL_WIZARD_SCENARIOS_DESC}</i></td>
+                        </tr>
+                        {if $scenarios|@count > 0}
+                            {foreach from=$scenarios item=item key=key}
+                                <tr>
+                                    <td scope="row" nowrap="nowrap"><slot>{$item.title}:</slot>&nbsp;{sugar_help text=$item.description}</td>
+                                    <td colspan="3"><slot><input type='checkbox' name='scenarios[]' value={$item.key} checked>  {$item.moduleOverview}</slot></td>
+                                </tr>
+                            {/foreach}
+                        {else}
+                            <h3>$LBL_WIZARD_SCENARIOS_EMPTY_LIST</h3>
+                        {/if}
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <div class="nav-buttons">
+
+        <input title="{$MOD.LBL_WIZARD_BACK_BUTTON}"
+               class="button" type="button" name="next_tab1" value="  {$MOD.LBL_WIZARD_BACK_BUTTON}  "
+               onclick="SugarWizard.changeScreen('system',true);" id="previous_tab_system" />&nbsp;
+        <input title="{$MOD.LBL_WIZARD_NEXT_BUTTON}"
+               class="button primary" type="button" name="next_tab1" value="  {$MOD.LBL_WIZARD_NEXT_BUTTON}  "
+               onclick="SugarWizard.changeScreen('locale',false);" id="next_tab_locale" />
+    </div>
+</div>
+<!-- end of scenario block -->
 
 <div id="locale" class="screen">
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -224,7 +273,11 @@ function disableReturnSubmission(e) {
     <div class="nav-buttons">
         <input title="{$MOD.LBL_WIZARD_BACK_BUTTON}"
             class="button" type="button" name="next_tab1" value="  {$MOD.LBL_WIZARD_BACK_BUTTON}  "
+        {if $silentInstall}
+            onclick="SugarWizard.changeScreen('scenarios',true);" id="previous_tab_scenarios" />&nbsp;
+        {else}
             onclick="SugarWizard.changeScreen('system',true);" id="previous_tab_system" />&nbsp;
+        {/if}
         <input title="{$MOD.LBL_WIZARD_NEXT_BUTTON}"
             class="button primary" type="button" name="next_tab1" value="  {$MOD.LBL_WIZARD_NEXT_BUTTON}  "
             onclick="SugarWizard.changeScreen('smtp',false); changeEmailScreenDisplay('{$mail_smtptype}'); document.getElementById('AdminWizard').mail_smtptype.value = 'gmail';" id="next_tab_smtp" />
@@ -509,7 +562,7 @@ function adjustEmailSettings(){
         user = document.getElementById('mail_smtpuser'),
         pass = document.getElementById('mail_smtppass'),
         port = document.getElementById('mail_smtpport');
-    if( !server.value || !user.value || !pass.value || !port.value)
+    if( !server.value || !port.value)
     {
             server.value = ""; 
             user.value = ""; 

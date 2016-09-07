@@ -5,36 +5,39 @@ if (! defined ( 'sugarEntry' ) || ! sugarEntry)
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -44,7 +47,7 @@ require_once 'modules/ModuleBuilder/parsers/constants.php' ;
 
 class ViewLayoutView extends SugarView
 {
-    function ViewLayoutView ()
+    function __construct()
     {
         $GLOBALS [ 'log' ]->debug ( 'in ViewLayoutView' ) ;
         $this->editModule = $_REQUEST [ 'view_module' ] ;
@@ -66,12 +69,26 @@ class ViewLayoutView extends SugarView
     }
 
     /**
+     * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+     */
+    function ViewLayoutView(){
+        $deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+        if(isset($GLOBALS['log'])) {
+            $GLOBALS['log']->deprecated($deprecatedMessage);
+        }
+        else {
+            trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+        }
+        self::__construct();
+    }
+
+    /**
 	 * @see SugarView::_getModuleTitleParams()
 	 */
 	protected function _getModuleTitleParams($browserTitle = false)
 	{
 	    global $mod_strings;
-	    
+
     	return array(
     	   translate('LBL_MODULE_NAME','Administration'),
     	   ModuleBuilderController::getModuleTitle(),
@@ -88,6 +105,11 @@ class ViewLayoutView extends SugarView
 
         global $mod_strings ;
         $parser = ParserFactory::getParser($this->editLayout,$this->editModule,$this->package);
+
+        if(isset($this->view_object_map['new_parser'])) {
+            $parser = $this->view_object_map['new_parser'];
+        }
+
         $history = $parser->getHistory () ;
         $smarty = new Sugar_Smarty ( ) ;
         //Add in the module we are viewing to our current mod strings
@@ -135,50 +157,50 @@ class ViewLayoutView extends SugarView
             if (! $this->fromModuleBuilder)
             {
 	            $buttons [] = array (
-                    'id' => 'saveBtn' , 
-                    'text' => translate ( 'LBL_BTN_SAVE' ) , 
+                    'id' => 'saveBtn' ,
+                    'text' => translate ( 'LBL_BTN_SAVE' ) ,
                     'actionScript' => "onclick='if(Studio2.checkGridLayout(\"{$this->editLayout}\")) Studio2.handleSave();'",
-                	'disabled' => $disableLayout, 
+                	'disabled' => $disableLayout,
                 ) ;
-                $buttons [] = array ( 
-                    'id' => 'publishBtn' , 
-                    'text' => translate ( 'LBL_BTN_SAVEPUBLISH' ) , 
+                $buttons [] = array (
+                    'id' => 'publishBtn' ,
+                    'text' => translate ( 'LBL_BTN_SAVEPUBLISH' ) ,
                     'actionScript' => "onclick='if(Studio2.checkGridLayout(\"{$this->editLayout}\")) Studio2.handlePublish();'",
-                	'disabled' => $disableLayout, 
+                	'disabled' => $disableLayout,
                 ) ;
                 $buttons [] = array ( 'id' => 'spacer' , 'width' => '33px' ) ;
-                $buttons [] = array ( 
-	                'id' => 'historyBtn' , 
-	                'text' => translate ( 'LBL_HISTORY' ) , 
+                $buttons [] = array (
+	                'id' => 'historyBtn' ,
+	                'text' => translate ( 'LBL_HISTORY' ) ,
 	                'actionScript' => "onclick='ModuleBuilder.history.browse(\"{$this->editModule}\", \"{$this->editLayout}\")'",
                     'disabled' => $disableLayout,
                 ) ;
-                $buttons [] = array ( 
-	                'id' => 'historyDefault' , 
-	                'text' => translate ( 'LBL_RESTORE_DEFAULT' ) , 
+                $buttons [] = array (
+	                'id' => 'historyDefault' ,
+	                'text' => translate ( 'LBL_RESTORE_DEFAULT' ) ,
 	                'actionScript' => "onclick='ModuleBuilder.history.revert(\"{$this->editModule}\", \"{$this->editLayout}\", \"{$history->getLast()}\", \"\")'",
-                	'disabled' => $disableLayout, 
+                	'disabled' => $disableLayout,
                 ) ;
             } else
             {
-                $buttons [] = array ( 
-                    'id' => 'saveBtn' , 
-                    'text' => $GLOBALS [ 'mod_strings' ] [ 'LBL_BTN_SAVE' ] , 
+                $buttons [] = array (
+                    'id' => 'saveBtn' ,
+                    'text' => $GLOBALS [ 'mod_strings' ] [ 'LBL_BTN_SAVE' ] ,
                     'actionScript' => "onclick='if(Studio2.checkGridLayout(\"{$this->editLayout}\")) Studio2.handlePublish();'",
                     'disabled' => $disableLayout,
                 ) ;
                 $buttons [] = array ( 'id' => 'spacer' , 'width' => '33px' ) ;
                 $buttons [] = array (
-                    'id' => 'historyBtn' , 
-                    'text' => translate ( 'LBL_HISTORY' ) , 
+                    'id' => 'historyBtn' ,
+                    'text' => translate ( 'LBL_HISTORY' ) ,
                     'actionScript' => "onclick='ModuleBuilder.history.browse(\"{$this->editModule}\", \"{$this->editLayout}\")'",
-                    'disabled' => $disableLayout, 
+                    'disabled' => $disableLayout,
                 ) ;
-                $buttons [] = array ( 
-                    'id' => 'historyDefault' , 
-                    'text' => translate ( 'LBL_RESTORE_DEFAULT' ) , 
+                $buttons [] = array (
+                    'id' => 'historyDefault' ,
+                    'text' => translate ( 'LBL_RESTORE_DEFAULT' ) ,
                     'actionScript' => "onclick='ModuleBuilder.history.revert(\"{$this->editModule}\", \"{$this->editLayout}\", \"{$history->getLast()}\", \"\")'",
-                    'disabled' => $disableLayout, 
+                    'disabled' => $disableLayout,
                 ) ;
             }
 
@@ -213,7 +235,7 @@ class ViewLayoutView extends SugarView
 
         // assign fields and layout
         $smarty->assign ( 'available_fields', $parser->getAvailableFields () ) ;
-        
+
         $smarty->assign ( 'disable_layout', $disableLayout) ;
         $smarty->assign ( 'required_fields', $requiredFields) ;
         $smarty->assign ( 'layout', $parser->getLayout () ) ;

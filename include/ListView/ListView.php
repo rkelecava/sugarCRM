@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 require_once('include/EditView/SugarVCR.php');
@@ -362,16 +365,44 @@ function process_dynamic_listview($source_module, $sugarbean,$subpanel_def)
         } else {
             $thepanel=$subpanel_def;
         }
+
+		/* BEGIN - SECURITY GROUPS */
+
+		//This check is costly doing it field by field in the below foreach
+		//instead pull up here and do once per record....
+		$aclaccess_is_owner = false;
+		$aclaccess_in_group = false;
+
+		global $current_user;
+		if(is_admin($current_user)) {
+			$aclaccess_is_owner = true;
+		} else {
+			$aclaccess_is_owner = $aItem->isOwner($current_user->id);
+		}
+
+		require_once("modules/SecurityGroups/SecurityGroup.php");
+		$aclaccess_in_group = SecurityGroup::groupHasAccess($aItem->module_dir,$aItem->id);
+
+    	/* END - SECURITY GROUPS */
+
         //get data source name
         $linked_field=$thepanel->get_data_source_name();
         $linked_field_set=$thepanel->get_data_source_name(true);
         static $count;
         if(!isset($count))$count = 0;
-
+		/* BEGIN - SECURITY GROUPS */
+		/**
         $field_acl['DetailView'] = $aItem->ACLAccess('DetailView');
         $field_acl['ListView'] = $aItem->ACLAccess('ListView');
         $field_acl['EditView'] = $aItem->ACLAccess('EditView');
         $field_acl['Delete'] = $aItem->ACLAccess('Delete');
+		*/
+		//pass is_owner, in_group...vars defined above
+        $field_acl['DetailView'] = $aItem->ACLAccess('DetailView',$aclaccess_is_owner,$aclaccess_in_group);
+        $field_acl['ListView'] = $aItem->ACLAccess('ListView',$aclaccess_is_owner,$aclaccess_in_group);
+        $field_acl['EditView'] = $aItem->ACLAccess('EditView',$aclaccess_is_owner,$aclaccess_in_group);
+        $field_acl['Delete'] = $aItem->ACLAccess('Delete',$aclaccess_is_owner,$aclaccess_in_group);
+		/* END - SECURITY GROUPS */
         foreach($thepanel->get_list_fields() as $field_name=>$list_field)
         {
             //add linked field attribute to the array.
@@ -548,7 +579,7 @@ function setDisplayHeaderAndFooter($bool) {
  * All Rights Reserved.
  * Contributor(s): ______________________________________.
 */
- function ListView() {
+ function __construct() {
 
 
     if(!$this->initialized) {
@@ -562,6 +593,22 @@ function setDisplayHeaderAndFooter($bool) {
         $this->local_current_module = $currentModule;
     }
 }
+
+
+    /**
+     * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+     */
+    function ListView(){
+        $deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+        if(isset($GLOBALS['log'])) {
+            $GLOBALS['log']->deprecated($deprecatedMessage);
+        }
+        else {
+            trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+        }
+        self::__construct();
+    }
+
 /**sets how many records should be displayed per page in the list view
  * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
  * All Rights Reserved.
@@ -1197,15 +1244,15 @@ function getUserVariable($localVarName, $varName) {
                 $end_URL = $this->start_link_wrapper.$end_URL.$this->end_link_wrapper;
             }
 
-            $moduleString = "{$currentModule}_{$html_varName}_offset";
-            $moduleStringOrder = "{$currentModule}_{$html_varName}_ORDER_BY";
+            $moduleString = htmlspecialchars("{$currentModule}_{$html_varName}_offset");
+            $moduleStringOrder = htmlspecialchars("{$currentModule}_{$html_varName}_ORDER_BY");
             if($this->shouldProcess && !$this->multi_select_popup) {
                 // check the checkboxes onload
                 echo "<script>YAHOO.util.Event.addListener(window, \"load\", sListView.check_boxes);</script>\n";
 
                 $massUpdateRun = isset($_REQUEST['massupdate']) && $_REQUEST['massupdate'] == 'true';
                 $uids = empty($_REQUEST['uid']) || $massUpdateRun ? '' : $_REQUEST['uid'];
-                $select_entire_list = ($massUpdateRun) ? 0 : (isset($_POST['select_entire_list']) ? $_POST['select_entire_list'] : (isset($_REQUEST['select_entire_list']) ? $_REQUEST['select_entire_list'] : 0));
+                $select_entire_list = ($massUpdateRun) ? 0 : (isset($_POST['select_entire_list']) ? $_POST['select_entire_list'] : (isset($_REQUEST['select_entire_list']) ? htmlspecialchars($_REQUEST['select_entire_list']) : 0));
 
                 echo "<textarea style='display: none' name='uid'>{$uids}</textarea>\n" .
                     "<input type='hidden' name='select_entire_list' value='{$select_entire_list}'>\n".
@@ -1723,6 +1770,7 @@ $close_inline_img = SugarThemeRegistry::current()->getImage('close_inline', 'bor
             $orderBy=  'amount';
         }
 		$buttons = false;
+        $col_count = 0;
         foreach($subpanel_def->get_list_fields() as $column_name=>$widget_args)
         {
             $usage = empty($widget_args['usage']) ? '' : $widget_args['usage'];
@@ -1750,6 +1798,13 @@ $close_inline_img = SugarThemeRegistry::current()->getImage('close_inline', 'bor
 	                $this->xTemplate->assign('HEADER_CELL', $widget_contents);
 	                static $count;
 	            if(!isset($count))$count = 0; else $count++;
+                    if($col_count == 0 || $column_name == 'name') $footable = 'data-toggle="true"';
+                    else {
+                        $footable = 'data-hide="phone"';
+                        if ($col_count > 2) $footable = 'data-hide="phone,phonelandscape"';
+                        if ($col_count > 4) $footable = 'data-hide="phone,phonelandscape,tablet"';
+                    }
+                    $this->xTemplate->assign('FOOTABLE', $footable);
 	                $this->xTemplate->assign('CELL_COUNT', $count);
 	                $this->xTemplate->assign('CELL_WIDTH', $cell_width);
 	                $this->xTemplate->parse('dyn_list_view.header_cell');
@@ -1757,9 +1812,11 @@ $close_inline_img = SugarThemeRegistry::current()->getImage('close_inline', 'bor
                 	$buttons = true;
                 }
             }
+            ++$col_count;
         }
 
         if($buttons) {
+                    $this->xTemplate->assign('FOOTABLE', '');
         			$this->xTemplate->assign('HEADER_CELL', "&nbsp;");
         			$this->xTemplate->assign('CELL_COUNT', $count);
 	                $this->xTemplate->assign('CELL_WIDTH', $cell_width);

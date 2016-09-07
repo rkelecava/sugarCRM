@@ -4,36 +4,39 @@ if (!defined('sugarEntry') || !sugarEntry)
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -162,15 +165,16 @@ foreach ($temp_field_array as $field_array) {
 
     if (show_field($field_array)
     ) {
+        $tempName= $field_array['name'];
 
         $select_row_curr_field_value = null;
         $b_values_different = false;
         $section_name='merge_row_similar';
 
         //Prcoess locaton of the field. if values are different show field in first section. else 2nd.
-        $select_row_curr_field_value = $focus->merge_bean->$field_array['name'];
+        $select_row_curr_field_value = $focus->merge_bean->$tempName;
         foreach ($merge_ids_array as $id) {
-            if (($mergeBeanArray[$id]-> $field_array['name']=='' and $select_row_curr_field_value =='') or $mergeBeanArray[$id]-> $field_array['name'] == $select_row_curr_field_value ) {
+            if (($mergeBeanArray[$id]->$tempName=='' and $select_row_curr_field_value =='') or $mergeBeanArray[$id]->$tempName == $select_row_curr_field_value ) {
                 $section_name='merge_row_similar';
             } else  {
                 $section_name='merge_row_diff';
@@ -179,12 +183,12 @@ foreach ($temp_field_array as $field_array) {
             }
         }
         //check for vname in mod strings first, then app, else just display name
-        $col_name = $field_array['name'];
+        $col_name =$tempName;
         if (isset ($focus->merge_bean_strings[$field_array['vname']]) && $focus->merge_bean_strings[$field_array['vname']] != '')
             $xtpl->assign("FIELD_LABEL", $focus->merge_bean_strings[$field_array['vname']]);
         elseif (isset ($app_strings[$field_array['vname']]) && $app_strings[$field_array['vname']] != '') $xtpl->assign("FIELD_LABEL", $app_strings[$field_array['vname']]);
         else
-             $xtpl->assign("FIELD_LABEL", $field_array['name']);
+             $xtpl->assign("FIELD_LABEL",$tempName);
         //if required add signage.
         if (!empty($focus->merge_bean->required_fields[$col_name]) or $col_name=='team_name') {
             $xtpl->assign("REQUIRED_SYMBOL","<span class='required'>".$app_strings['LBL_REQUIRED_SYMBOL']."</span>");
@@ -201,60 +205,12 @@ foreach ($temp_field_array as $field_array) {
             $field_check = $field_array['type'];
 
 
-        if(preg_match('/.*?_address_street$/', $field_array['name'])) {
+        if(preg_match('/.*?_address_street$/',$tempName)) {
            $field_check = 'text';
         }
 
-        $xtpl->assign("EDIT_FIELD_NAME", $field_array['name']);
+        $xtpl->assign("EDIT_FIELD_NAME",$tempName);
         $xtpl->assign("TAB_INDEX", $field_count);
-
-
-        //check to see if the value of the field is from a function
-        $valueFormatted = false;
-        if(!empty($field_array['function'])){
-
-            //process the function array if it exists
-            $function = $field_array['function'];
-            if(is_array($function) && isset($function['name'])){
-                $function = $field_array['function']['name'];
-            }else{
-                $function = $field_array['function'];
-            }
-            if(!empty($field_array['function']['include']) && file_exists($field_array['function']['include']))
-            {
-                require_once($field_array['function']['include']);
-            }
-
-            //if field is enum or multi enum, lets make sure we are returning options as html, as this is what
-            //merge step3 expects
-            if($field_check == 'multienum' || $field_check == 'enum'){
-                if(!empty($field_array['function']['returns']) && $field_array['function']['returns'] == 'html'){
-
-                    //use valueformatted to hold the returned options
-                    $valueFormatted = call_user_func($function,  $focus->merge_bean, $field_array['name'], $select_row_curr_field_value, 'Import');
-
-                }else{
-                    //if no html was returned, we have an array of options, lets create the html markup
-                    $field_array['options'] = call_user_func($function);
-
-                    foreach( $field_array['options'] as $k=>$v){
-                        //process and mark the field as selected if needed
-                        if($field_check == 'enum' && $select_row_curr_field_value == $k){
-                            $valueFormatted .="<option value='$k' selected>$v</option>";
-                        }elseif($field_check == 'multienum' && !empty($k) && strpos($select_row_curr_field_value, $k) !== false){
-                            $valueFormatted .="<option value='$k' selected>$v</option>";
-                        }else{
-                            
-                            $valueFormatted .="<option value='$k'>$v</option>";
-                        }
-                    }
-                }
-
-            }else{
-            
-                $select_row_curr_field_value = call_user_func($function);
-            }
-        }
 
         switch ($field_check) {
             case ('name') :
@@ -279,27 +235,13 @@ foreach ($temp_field_array as $field_array) {
                 $xtpl->parse("main.".$section_name.".merge_cell_edit_textarea");
                 break;
             case ('enum') :
-
-                //assign value(s) directly if it is derived from a function
-                if(empty($field_array['function'])){
-                    $xtpl->assign("SELECT_OPTIONS", get_select_options_with_id($app_list_strings[$field_array['options']], $select_row_curr_field_value));
-                }elseif(is_string($valueFormatted)){
-                    //if this field has a function, then assign values directly
-                    $xtpl->assign("SELECT_OPTIONS", $valueFormatted);
-                }
+                $xtpl->assign("SELECT_OPTIONS", get_select_options_with_id($app_list_strings[$field_array['options']], $select_row_curr_field_value));
                 $xtpl->assign("CELL_WIDTH",$col_width);
                 $xtpl->parse("main.".$section_name.".merge_cell_edit_dropdown");
                 break;
             case ('multienum') :
-
-                //assign value(s) directly if it is derived from a function
-                if(empty($field_array['function'])){
-                    $select_row_curr_field_value = unencodeMultienum($select_row_curr_field_value);
-                    $xtpl->assign("SELECT_OPTIONS", get_select_options_with_id($app_list_strings[$field_array['options']], $select_row_curr_field_value));
-                }elseif(is_string($valueFormatted)){
-                    $xtpl->assign("SELECT_OPTIONS", $valueFormatted);
-                }
-
+                $select_row_curr_field_value = unencodeMultienum($select_row_curr_field_value);
+                $xtpl->assign("SELECT_OPTIONS", get_select_options_with_id($app_list_strings[$field_array['options']], $select_row_curr_field_value));
                 $xtpl->assign("CELL_WIDTH",$col_width);
                 $xtpl->parse("main.".$section_name.".merge_cell_edit_multidropdown");
                 break;
@@ -310,24 +252,25 @@ foreach ($temp_field_array as $field_array) {
                 }
             case ('link') :
                 //get_related_name
+                $tempId = $field_array['id_name'];
                 if (empty($select_row_curr_field_value)) {
-                    $related_name=get_related_name($field_array,$focus->merge_bean->$field_array['id_name']);
+                    $related_name=get_related_name($field_array,$focus->merge_bean->$tempId);
                     if ($related_name !== false ) {
                        $select_row_curr_field_value=$related_name;
                     }
                 }
                 if($field_check == 'link') {//relate type should not enter this.
-                    $exclude[$field_array['name']] = $field_array['name'];
+                    $exclude[$tempName] =$tempName;
                 }
-                $xtpl->assign("POPUP_ID_FIELD", $field_array['id_name']);
-                $xtpl->assign("POPUP_NAME_FIELD", $field_array['name']);
+                $xtpl->assign("POPUP_ID_FIELD",$tempId);
+                $xtpl->assign("POPUP_NAME_FIELD",$tempName);
                 $xtpl->assign("POPUP_NAME_VALUE", $select_row_curr_field_value);
-                $xtpl->assign("POPUP_ID_VALUE", $focus->merge_bean-> $field_array['id_name']);
+                $xtpl->assign("POPUP_ID_VALUE", $focus->merge_bean->$tempId);
                 $xtpl->assign("POPUP_MODULE", $field_array['module']);
                 $xtpl->assign("CELL_WIDTH", $col_width);
                 $xtpl->assign("MERGED_LINKS", implode(',', $exclude));
 
-                $popup_data = array ('call_back_function' => 'set_return', 'form_name' => 'EditView', 'field_to_name_array' => array ('id' => $field_array['id_name'], 'name' => $field_array['name'],),);
+                $popup_data = array ('call_back_function' => 'set_return', 'form_name' => 'EditView', 'field_to_name_array' => array ('id' =>$tempId, 'name' =>$tempName,),);
                 $xtpl->assign('ENCODED_POPUP_DATA', $json->encode($popup_data));
 
                 $xtpl->parse("main.".$section_name.".merge_cell_edit_popup");
@@ -370,7 +313,7 @@ foreach ($temp_field_array as $field_array) {
             $field_name=null;
             switch ($field_check) {
                 case ('bool') :
-                    if (($mergeBeanArray[$id]->$field_array['name'] == '1' || $mergeBeanArray[$id]->$field_array['name'] == 'yes' || $mergeBeanArray[$id]->$field_array['name'] == 'on') && !empty($mergeBeanArray[$id]->$field_array['name'])) {
+                    if (($mergeBeanArray[$id]->$tempName == '1' || $mergeBeanArray[$id]->$tempName == 'yes' || $mergeBeanArray[$id]->$tempName == 'on') && !empty($mergeBeanArray[$id]->$tempName)) {
                         $xtpl->assign("FIELD_VALUE", " checked");
                     } else {
                         $xtpl->assign("FIELD_VALUE", "");
@@ -378,67 +321,55 @@ foreach ($temp_field_array as $field_array) {
                     $field_name="main.".$section_name.".merge_cell_field_value_checkbox";
                     break;
                 case ('enum') :
-                    if(!empty($field_array['function']) && !empty($field_array['options']) && !empty($mergeBeanArray[$id]-> $field_array['name'])){
-                        //if fieldoptions were set from a function, get the value directly
-                        display_field_value($field_array['options'][$mergeBeanArray[$id]-> $field_array['name']]);
-                    
-                    }else if ($mergeBeanArray[$id]-> $field_array['name'] != '' and isset($field_array['options']) and isset($app_list_strings[$field_array['options']][$mergeBeanArray[$id]-> $field_array['name']])) {
-                        display_field_value( $app_list_strings[$field_array['options']][$mergeBeanArray[$id]-> $field_array['name']]);
+                    if ($mergeBeanArray[$id]->$tempName != '' and isset($field_array['options']) and isset($app_list_strings[$field_array['options']][$mergeBeanArray[$id]->$tempName])) {
+                        display_field_value( $app_list_strings[$field_array['options']][$mergeBeanArray[$id]->$tempName]);
                     } else {
-                        display_field_value($mergeBeanArray[$id]-> $field_array['name']);
+                        display_field_value($mergeBeanArray[$id]->$tempName);
                     }
                     $field_name="main.".$section_name.".merge_cell_field_value";
                     break;
                 case ('multienum') :
-                     if(!empty($field_array['function']) && !empty($field_array['options']) && !empty($mergeBeanArray[$id]-> $field_array['name'])){
-                        //if fieldoptions were set from a function, get the value directly
-                        $displayME = str_replace("^","",$mergeBeanArray[$id]-> $field_array['name']);
-                        $meVals = explode(',', $displayME);
-                        //iterate through each entry and get the Options value
-                        foreach($meVals as $optionIndex){
-                            $displayME = str_replace($optionIndex,$field_array['options'][$optionIndex],$displayME);
-                        }
-                        display_field_value($displayME);
-
-                    }else if ($mergeBeanArray[$id]-> $field_array['name'] != '' and isset($field_array['options']) and isset($app_list_strings[$field_array['options']][$mergeBeanArray[$id]-> $field_array['name']])) {
-                        display_field_value(str_replace("^","",$app_list_strings[$field_array['options']][$mergeBeanArray[$id]-> $field_array['name']]));
+                    if ($mergeBeanArray[$id]->$tempName != '' and isset($field_array['options']) and isset($app_list_strings[$field_array['options']][$mergeBeanArray[$id]->$tempName])) {
+                        display_field_value(str_replace("^","",$app_list_strings[$field_array['options']][$mergeBeanArray[$id]->$tempName]));
                     } else {
-                        display_field_value(str_replace("^","",$mergeBeanArray[$id]-> $field_array['name']));
+                        display_field_value(str_replace("^","",$mergeBeanArray[$id]->$tempName));
                     }
                     $field_name="main.".$section_name.".merge_cell_field_value";
                     break;
                 case ('relate') :
                 case ('link') :
                     $related_name=false;
-                    if (empty($mergeBeanArray[$id]-> $field_array['name']) && !empty($mergeBeanArray[$id]-> $field_array['id_name'])) {
-                       $related_name=get_related_name($field_array,$mergeBeanArray[$id]-> $field_array['id_name']);
+                    $tempId = $field_array['id_name'];
+                    if (empty($mergeBeanArray[$id]->$tempName) && !empty($mergeBeanArray[$id]->$tempId)) {
+                       $related_name=get_related_name($field_array,$mergeBeanArray[$id]->$tempId);
                        if ($related_name !== false) {
-                            $mergeBeanArray[$id]-> $field_array['name']=$related_name;
+                            $mergeBeanArray[$id]->$tempName=$related_name;
                        }
                     }
-               	    display_field_value($mergeBeanArray[$id]-> $field_array['name']);
+               	    display_field_value($mergeBeanArray[$id]->$tempName);
                     $field_name="main.".$section_name.".merge_cell_field_value";
                     break;
                 default :
-                    display_field_value($mergeBeanArray[$id]-> $field_array['name']);
+                    display_field_value($mergeBeanArray[$id]->$tempName);
                     $field_name="main.".$section_name.".merge_cell_field_value";
                     break;
             }
 
-            $json_data = array ('field_name' => $field_array['name'], 'field_type' => $field_check,);
+            $json_data = array ('field_name' =>$tempName, 'field_type' => $field_check,);
             //add an array of fields/values to the json array
             //for setting all the values for merge
             if ($field_check == 'relate' or $field_check == 'link') {
                 $temp_array = Array ();
-                $json_data['popup_fields'] = Array ($field_array['name'] => $mergeBeanArray[$id]-> $field_array['name'], $field_array['id_name'] => $mergeBeanArray[$id]-> $field_array['id_name'],);
+                $tempId = $field_array['id_name'];
+                $json_data['popup_fields'] = Array ($tempName => $mergeBeanArray[$id]->$tempName,$tempId => $mergeBeanArray[$id]->$tempId,);
             } else if($field_check == 'teamset') {
             	$json_data['field_value'] = TeamSetManager::getCommaDelimitedTeams($mergeBeanArray[$id]->team_set_id, $mergeBeanArray[$id]->team_id, true);
             	$json_data['field_value2'] = TeamSetManager::getTeamsFromSet($mergeBeanArray[$id]->team_set_id);
             	$json_data['field_value3'] =  $mergeBeanArray[$id]->team_set_id;
             } else if($field_check == 'multienum') {
-                $json_data['field_value'] = unencodeMultienum($mergeBeanArray[$id]-> $field_array['name']);
+                $json_data['field_value'] = unencodeMultienum($mergeBeanArray[$id]->$tempName);
             } else {
-                $json_data['field_value'] = $mergeBeanArray[$id]-> $field_array['name'];
+                $json_data['field_value'] = $mergeBeanArray[$id]->$tempName;
             }
             $encoded_json_data = $json->encode($json_data);
             $xtpl->assign('ENCODED_JSON_DATA', $encoded_json_data);

@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -2031,8 +2034,11 @@ function validate_manifest($manifest) {
     // takes a manifest.php manifest array and validates contents
     global $subdirs;
     global $sugar_version;
+	global $sugar_config;
     global $sugar_flavor;
 	global $mod_strings;
+
+	include_once('suitecrm_version.php');
 
     if(!isset($manifest['type'])) {
         return $mod_strings['ERROR_MANIFEST_TYPE'];
@@ -2044,31 +2050,92 @@ function validate_manifest($manifest) {
 		return $mod_strings['ERROR_PACKAGE_TYPE']. ": '" . $type . "'.";
     }
 
-    if(isset($manifest['acceptable_sugar_versions'])) {
-        $version_ok = false;
-        $matches_empty = true;
-        if(isset($manifest['acceptable_sugar_versions']['exact_matches'])) {
-            $matches_empty = false;
-            foreach($manifest['acceptable_sugar_versions']['exact_matches'] as $match) {
-                if($match == $sugar_version) {
-                    $version_ok = true;
-                }
-            }
-        }
-        if(!$version_ok && isset($manifest['acceptable_sugar_versions']['regex_matches'])) {
-            $matches_empty = false;
-            foreach($manifest['acceptable_sugar_versions']['regex_matches'] as $match) {
-                if(preg_match("/$match/", $sugar_version)) {
-                    $version_ok = true;
-                }
-            }
-        }
+	if(isset($manifest['acceptable_php_versions'])) {
+		$version_ok = false;
+		$matches_empty = true;
+		if(isset($manifest['acceptable_php_versions']['exact_matches'])) {
+			$matches_empty = false;
+			foreach($manifest['acceptable_php_versions']['exact_matches'] as $match) {
+				if($match == PHP_VERSION) {
+					$version_ok = true;
+				}
+			}
+		}
+		if(!$version_ok && isset($manifest['acceptable_php_versions']['regex_matches'])) {
+			$matches_empty = false;
+			foreach($manifest['acceptable_php_versions']['regex_matches'] as $match) {
+				if(preg_match("/$match/", PHP_VERSION)) {
+					$version_ok = true;
+				}
+			}
+		}
 
-        if(!$matches_empty && !$version_ok) {
-            return $mod_strings['ERROR_VERSION_INCOMPATIBLE']."<br />".
-            $mod_strings['ERR_UW_VERSION'].$sugar_version;
-        }
-    }
+		if(!$matches_empty && !$version_ok) {
+			return $mod_strings['ERROR_PHP_VERSION_INCOMPATIBLE']."<br />".
+			$mod_strings['ERR_UW_PHP_VERSION'].PHP_VERSION;
+		}
+	}
+
+
+	if(!isset($manifest['acceptable_suitecrm_versions'])) {
+		// If sugarcrm version set 'acceptable_sugar_versions', and acceptable_suitecrm_versions not set check on sugar version.
+		if (isset($manifest['acceptable_sugar_versions'])) {
+			$version_ok = false;
+			$matches_empty = true;
+			if (isset($manifest['acceptable_sugar_versions']['exact_matches'])) {
+				$matches_empty = false;
+				foreach ($manifest['acceptable_sugar_versions']['exact_matches'] as $match) {
+					if ($match == $sugar_version) {
+						$version_ok = true;
+					}
+				}
+			}
+			if (!$version_ok && isset($manifest['acceptable_sugar_versions']['regex_matches'])) {
+				$matches_empty = false;
+				foreach ($manifest['acceptable_sugar_versions']['regex_matches'] as $match) {
+					if (preg_match("/$match/", $sugar_version)) {
+						$version_ok = true;
+					}
+				}
+			}
+
+			if (!$matches_empty && !$version_ok) {
+				return $mod_strings['ERROR_VERSION_INCOMPATIBLE'] . "<br />" .
+				$mod_strings['ERR_UW_VERSION'] . $sugar_version;
+			}
+		}
+		else {
+			// if neither set reject
+			return $mod_strings['ERROR_NO_VERSION_SET'];
+		}
+	}
+	else {
+		// If sugarcrm version set 'acceptable_sugar_versions', and acceptable_suitecrm_versions set check only on suitecrm version
+		// If sugarcrm version not set 'acceptable_sugar_versions', and acceptable_suitecrm_versions set check only on suitecrm version
+		$version_ok = false;
+		$matches_empty = true;
+		if (isset($manifest['acceptable_suitecrm_versions']['exact_matches'])) {
+			$matches_empty = false;
+			foreach ($manifest['acceptable_suitecrm_versions']['exact_matches'] as $match) {
+				if ($match == $suitecrm_version) {
+					$version_ok = true;
+				}
+			}
+		}
+		if (!$version_ok && isset($manifest['acceptable_suitecrm_versions']['regex_matches'])) {
+			$matches_empty = false;
+			foreach ($manifest['acceptable_suitecrm_versions']['regex_matches'] as $match) {
+				if (preg_match("/$match/", $suitecrm_version)) {
+					$version_ok = true;
+				}
+			}
+		}
+
+		if (!$matches_empty && !$version_ok) {
+			return $mod_strings['ERROR_SUITECRM_VERSION_INCOMPATIBLE'] . "<br />" .
+			$mod_strings['ERR_UW_SUITECRM_VERSION'] . $suitecrm_version;
+		}
+	}
 
     if(isset($manifest['acceptable_sugar_flavors']) && sizeof($manifest['acceptable_sugar_flavors']) > 0) {
         $flavor_ok = false;
@@ -2086,6 +2153,7 @@ function validate_manifest($manifest) {
 
     return '';
 }
+
 }
 
 function unlinkUploadFiles() {
@@ -2236,31 +2304,12 @@ function resetUwSession() {
 }
 
 /**
+ * @deprecated
  * runs rebuild scripts
  */
 function UWrebuild() {
-	global $db;
-	global $path;
-	/*
-	//CCL - Comment this block out, it is called in end.php
-	logThis('Rebuilding everything...', $path);
-	require_once('modules/Administration/QuickRepairAndRebuild.php');
-	$randc = new RepairAndClear();
-    $randc->repairAndClearAll(array('clearAll'),array(translate('LBL_ALL_MODULES')), false, false);
-    */
-	$query = "DELETE FROM versions WHERE name='Rebuild Extensions'";
-	$db->query($query);
-	logThis('Registering rebuild record: '.$query, $path);
-	logThis('Rebuild done.', $path);
-
-	// insert a new database row to show the rebuild extensions is done
-	$id = create_guid();
-	$gmdate = gmdate('Y-m-d H:i:s');
-	$date_entered = db_convert("'$gmdate'", 'datetime');
-	$query = 'INSERT INTO versions (id, deleted, date_entered, date_modified, modified_user_id, created_by, name, file_version, db_version) '
-		. "VALUES ('$id', '0', $date_entered, $date_entered, '1', '1', 'Rebuild Extensions', '4.0.0', '4.0.0')";
-	$db->query($query);
-	logThis('Registering rebuild record in versions table: '.$query, $path);
+	
+	$GLOBALS['log']->deprecated('UWrebuild is deprecated');
 }
 
 function getCustomTables() {

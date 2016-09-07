@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -84,11 +87,8 @@ class CalendarUtils {
 	 * @param SugarBean $bean
 	 * @return array
 	 */
-	static function get_time_data(SugarBean $bean){
+	static function get_time_data(SugarBean $bean, $start_field = "date_start", $end_field = "date_end"){
 					$arr = array();
-
-					$start_field = "date_start";
-					$end_field = "date_end";
 
 					if($bean->object_name == 'Task')
 						$start_field = $end_field = "date_due";
@@ -97,13 +97,29 @@ class CalendarUtils {
 					if(empty($bean->$end_field))
 						$bean->$end_field = $bean->$start_field;
 
-					$timestamp = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format(),$bean->$start_field,new DateTimeZone('UTC'))->format('U');
+					if($bean->field_defs[ $start_field ]['type'] == "date"){
+						$timestamp = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_format(),$bean->$start_field,new DateTimeZone('UTC'))->format('U');
+					}else{
+						$timestamp = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format(),$bean->$start_field,new DateTimeZone('UTC'))->format('U');
+					}
 					$arr['timestamp'] = $timestamp;
 					$arr['time_start'] = $GLOBALS['timedate']->fromTimestamp($arr['timestamp'])->format($GLOBALS['timedate']->get_time_format());
-					$date_start = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format(),$bean->$start_field,new DateTimeZone('UTC'));
+
+					if($bean->field_defs[ $start_field ]['type'] == "date") {
+						$date_start = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_format(), $bean->$start_field, new DateTimeZone('UTC'));
+					}else{
+						$date_start = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format(), $bean->$start_field, new DateTimeZone('UTC'));
+					}
+
 					$arr['ts_start'] = $date_start->get("-".$date_start->format("H")." hours -".$date_start->format("i")." minutes -".$date_start->format("s")." seconds")->format('U');
 					$arr['offset'] = $date_start->format('H') * 3600 + $date_start->format('i') * 60;
-					$date_end = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format(),$bean->$end_field,new DateTimeZone('UTC'));
+
+					if($bean->field_defs[ $start_field ]['type'] == "date") {
+						$date_end = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_format(),$bean->$end_field,new DateTimeZone('UTC'));
+					}else{
+						$date_end = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format(),$bean->$end_field,new DateTimeZone('UTC'));
+					}
+
 					if($bean->object_name != 'Task')
 						$date_end->modify("-1 minute");
 					$arr['ts_end'] = $date_end->get("+1 day")->get("-".$date_end->format("H")." hours -".$date_end->format("i")." minutes -".$date_end->format("s")." seconds")->format('U');
@@ -154,7 +170,7 @@ class CalendarUtils {
 				'access' => 'yes',
 				'type' => strtolower($bean->object_name),
 				'module_name' => $bean->module_dir,
-				'user_id' => $GLOBALS['current_user']->id,
+				'user_id' => $bean->assigned_user_id,
 				'detail' => 1,
 				'edit' => 1,
 				'name' => $bean->name,
@@ -201,7 +217,7 @@ class CalendarUtils {
 	 		}else
 	 			$date_start = $bean->date_start;
 
-	 		$date = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format(),$date_start);
+	 		$date = SugarDateTime::createFromFormat($GLOBALS['timedate']->get_date_time_format() ,$date_start);
 		 	$arr = array_merge($arr,array(
 		 		'current_dow' => $date->format("w"),
 		 		'default_repeat_until' => $date->get("+1 Month")->format($GLOBALS['timedate']->get_date_format()),

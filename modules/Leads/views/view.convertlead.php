@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 require_once("include/EditView/EditView2.php");
@@ -48,7 +51,7 @@ class ViewConvertLead extends SugarView
         $view_object_map = array()
         )
     {
-        parent::SugarView($bean, $view_object_map);
+        parent::__construct($bean, $view_object_map);
     	$this->medataDataFile = $this->fileName;
         if (file_exists("custom/$this->fileName"))
         {
@@ -463,15 +466,16 @@ class ViewConvertLead extends SugarView
                 $fieldDef = $beans['Contacts']->field_defs[$select];
                 if (!empty($fieldDef['id_name']) && !empty($_REQUEST[$fieldDef['id_name']]))
                 {
-                    $beans['Contacts']->$fieldDef['id_name'] = $_REQUEST[$fieldDef['id_name']];
-                    $selects[$module] = $_REQUEST[$fieldDef['id_name']];
+                    $idName = $fieldDef['id_name'];
+                    $beans['Contacts']->$idName = $_REQUEST[$idName];
+                    $selects[$module] = $_REQUEST[$idName];
                     if (!empty($_REQUEST[$select]))
                     {
                         $beans['Contacts']->$select = $_REQUEST[$select];
                     }
                     // Bug 39268 - Add the existing beans to a list of beans we'll potentially add the lead's activities to
                     $bean = loadBean($module);
-                    $bean->retrieve($_REQUEST[$fieldDef['id_name']]);
+                    $bean->retrieve($_REQUEST[$idName]);
                     $selectedBeans[$module] = $bean;
                     // If we selected the Contact, just overwrite the $beans['Contacts']
                     if ($module == 'Contacts')
@@ -757,7 +761,7 @@ class ViewConvertLead extends SugarView
 		{
 			$beanName = $beanList[$module];
 			$activity = new $beanName();
-			$query = "SELECT id FROM {$activity->table_name} WHERE parent_id = '{$lead->id}' AND parent_type = 'Leads'";
+			$query = "SELECT id FROM {$activity->table_name} WHERE parent_id = '{$lead->id}' AND parent_type = 'Leads' AND deleted = 0";
 			$result = $db->query($query,true);
             while($row = $db->fetchByAssoc($result))
             {
@@ -819,6 +823,15 @@ class ViewConvertLead extends SugarView
                 $newActivity->$key = $bean->id;
             }
 
+            //check users connected to bean
+            if($activity->load_relationship("users")){
+                $userList = $activity->users->getBeans();
+                if(count($userList) > 0 && $newActivity->load_relationship("users")) {
+                    foreach ($userList as $user) {
+                        $newActivity->users->add($user->id);
+                    }
+                }
+            }
             //parent (related to field) should be blank unless it is explicitly sent in
             //it is not sent in unless the account is being created as well during lead conversion
             $newActivity->parent_id =  $parentID;
@@ -866,8 +879,9 @@ class ViewConvertLead extends SugarView
 			{
 				$bean->id = create_guid();
 				$bean->new_with_id = true;
-				$contact->$fieldDef['id_name'] = $bean->id ;
-				if ($fieldDef['id_name'] != $select) {
+                $idName = $fieldDef['id_name'];
+				$contact->$idName = $bean->id ;
+				if ($idName != $select) {
 					$rname = isset($fieldDef['rname']) ? $fieldDef['rname'] : "";
 					if (!empty($rname) && isset($bean->$rname))
 						$contact->$select = $bean->$rname;
@@ -1012,7 +1026,7 @@ class ViewConvertLead extends SugarView
     	{
     		echo ("<span class='error'>" . translate('LBL_CONVERTLEAD_WARNING'));
     		$dupes = array();
-    		$q = "SELECT id, first_name, last_name FROM contacts WHERE first_name LIKE '{$lead->first_name}' AND last_name LIKE '{$lead->last_name}'";
+    		$q = "SELECT id, first_name, last_name FROM contacts WHERE first_name LIKE '{$lead->first_name}' AND last_name LIKE '{$lead->last_name}' AND deleted = 0";
     		$result = $lead->db->query($q);
     		while($row = $lead->db->fetchByAssoc($result)) {
     			$contact = new Contact();

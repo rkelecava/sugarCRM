@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 
@@ -52,41 +55,41 @@ class BreadCrumbStack {
    private $stackMap;
    /**
     * Boolean flag to determine whether or not entries not visible should be removed
-    * 
-    * @var 
+    *
+    * @var
     */
    private $deleteInvisible = false;
-   
-   
+
+
    /**
     * BreadCrumbStack
     * Constructor for BreadCrumbStack that builds list of breadcrumbs using tracker table
-    * 
+    *
     * @param $user_id String value of user id to get bread crumb items for
     * @param $modules mixed value of module name(s) to provide extra filtering
     */
-   public function BreadCrumbStack($user_id, $modules='') {
+   public function __construct($user_id, $modules='') {
       $this->stack = array();
       $this->stackMap = array();
-      
+
       $admin = new Administration();
-	  $admin->retrieveSettings('tracker');      
- 
+	  $admin->retrieveSettings('tracker');
+
       $this->deleteInvisible = !empty($admin->settings['tracker_Tracker']);
       $db = DBManagerFactory::getInstance();
-      
+
       $module_query = '';
       if(!empty($modules)) {
       	 $history_max_viewed = 10;
          $module_query = is_array($modules) ? ' AND module_name IN (\'' . implode("','" , $modules) . '\')' :  ' AND module_name = \'' . $modules . '\'';
       } else {
       	 $history_max_viewed = (!empty($GLOBALS['sugar_config']['history_max_viewed']))? $GLOBALS['sugar_config']['history_max_viewed'] : 50;
-      }         
-      
-      $query = 'SELECT distinct item_id AS item_id, id, item_summary, module_name, monitor_id, date_modified FROM tracker WHERE user_id = \'' . $user_id . '\' AND deleted = 0 AND visible = 1 ' . $module_query . ' ORDER BY date_modified DESC';	
+      }
+
+      $query = 'SELECT distinct item_id AS item_id, id, item_summary, module_name, monitor_id, date_modified FROM tracker WHERE user_id = \'' . $user_id . '\' AND deleted = 0 AND visible = 1 ' . $module_query . ' ORDER BY date_modified DESC';
       $result = $db->limitQuery($query, 0, $history_max_viewed);
       $items = array();
-      while(($row = $db->fetchByAssoc($result))) {	     
+      while(($row = $db->fetchByAssoc($result))) {
       		$items[] = $row;
       }
       $items = array_reverse($items);
@@ -94,11 +97,25 @@ class BreadCrumbStack {
       	  $this->push($item);
       }
    }
-   
+
+	/**
+	 * @deprecated deprecated since version 7.6, PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code, use __construct instead
+	 */
+	public function BreadCrumbStack($user_id, $modules=''){
+		$deprecatedMessage = 'PHP4 Style Constructors are deprecated and will be remove in 7.8, please update your code';
+		if(isset($GLOBALS['log'])) {
+			$GLOBALS['log']->deprecated($deprecatedMessage);
+		}
+		else {
+			trigger_error($deprecatedMessage, E_USER_DEPRECATED);
+		}
+		self::__construct($user_id, $modules);
+	}
+
    /**
     * contains
     * Returns true if the stack contains the specified item_id, false otherwise.
-    * 
+    *
     * @param item_id the item id to search for
     * @return id of the first item on the stack
     */
@@ -108,10 +125,10 @@ class BreadCrumbStack {
    	  	}else
    	  		return false;
    }
-   
+
    /**
     * Push an element onto the stack.
-    * This will only maintain a list of unique item_ids, if an item_id is found to 
+    * This will only maintain a list of unique item_ids, if an item_id is found to
     * already exist in the stack, we want to remove it and update the database to reflect it's
     * visibility.
     *
@@ -138,7 +155,7 @@ class BreadCrumbStack {
 	   	  $this->addItem($row);
    	  }
    }
-   
+
    /**
     * Pop an item off the stack
     *
@@ -150,7 +167,7 @@ class BreadCrumbStack {
    			$this->heal();
    		}
    }
-   
+
    /**
     * Change the visibility of an item
     *
@@ -164,7 +181,7 @@ class BreadCrumbStack {
    	    }
         $GLOBALS['db']->query($query, true);
    }
-   
+
    /**
     * Pop an Item off the stack. Call heal to reconstruct the indices properly
     *
@@ -178,7 +195,7 @@ class BreadCrumbStack {
 	   		$this->heal();
    		}
    }
-   
+
    /**
     * Add an item to the stack
     *
@@ -188,10 +205,10 @@ class BreadCrumbStack {
    		$this->stack[] = $row;
    		$this->stackMap[$row['item_id']] = ($this->length() - 1);
    }
-   
+
    /**
-    * Once we have removed an item from the stack we need to be sure to have the 
-    * ids and indices match up properly.  Heal takes care of that.  This method should only 
+    * Once we have removed an item from the stack we need to be sure to have the
+    * ids and indices match up properly.  Heal takes care of that.  This method should only
     * be called when an item_id is already in the stack and needs to be removed
     *
     */
@@ -203,7 +220,7 @@ class BreadCrumbStack {
    			$this->addItem($val);
    		}
    }
-   
+
    /**
     * Return the number of elements in the stack
     *
@@ -212,7 +229,7 @@ class BreadCrumbStack {
    public function length(){
    		return count($this->stack);
    }
-   
+
    /**
     * Return the list of breadcrubmbs currently in memory
     *
@@ -226,7 +243,7 @@ class BreadCrumbStack {
 	   	  	    if(in_array($entry['module_name'], $filter_module)) {
 	   	  	       $s2[$entry['item_id']] = $entry;
 	   	  	    }
-	   	  	 }   	  	 	
+	   	  	 }
    	  	 } else {
 	   	  	 foreach($this->stack as $entry) {
 	   	  	    if($entry['module_name'] == $filter_module) {
@@ -234,14 +251,14 @@ class BreadCrumbStack {
 	   	  	    }
 	   	  	 }
    	  	 }
-   	  	 
+
    	  	 $s2 = array_reverse($s2);
    	     if(count($s2) > 10) {
    	  	 	$s2 = array_slice($s2, 0, 10);
    	  	 }
-   	  	 return $s2;   	  	 
+   	  	 return $s2;
    	  }
-   	  
+
    	  $s = $this->stack;
    	  $s = array_reverse($s);
    	  if(count($s) > 10) {

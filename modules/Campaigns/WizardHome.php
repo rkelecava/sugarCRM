@@ -3,36 +3,39 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
  * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
- * 
+
+ * SuiteCRM is an extension to SugarCRM Community Edition developed by Salesagility Ltd.
+ * Copyright (C) 2011 - 2014 Salesagility Ltd.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
  * Free Software Foundation with the addition of the following permission added
  * to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED WORK
  * IN WHICH THE COPYRIGHT IS OWNED BY SUGARCRM, SUGARCRM DISCLAIMS THE WARRANTY
  * OF NON INFRINGEMENT OF THIRD PARTY RIGHTS.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
  * details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License along with
  * this program; if not, see http://www.gnu.org/licenses or write to the Free
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- * 
+ *
  * You can contact SugarCRM, Inc. headquarters at 10050 North Wolfe Road,
  * SW2-130, Cupertino, CA 95014, USA. or at email address contact@sugarcrm.com.
- * 
+ *
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- * 
+ *
  * In accordance with Section 7(b) of the GNU Affero General Public License version 3,
  * these Appropriate Legal Notices must retain the display of the "Powered by
- * SugarCRM" logo. If the display of the logo is not reasonably feasible for
- * technical reasons, the Appropriate Legal Notices must display the words
- * "Powered by SugarCRM".
+ * SugarCRM" logo and "Supercharged by SuiteCRM" logo. If the display of the logos is not
+ * reasonably feasible for  technical reasons, the Appropriate Legal Notices must
+ * display the words  "Powered by SugarCRM" and "Supercharged by SuiteCRM".
  ********************************************************************************/
 
 /*********************************************************************************
@@ -53,6 +56,13 @@ require_once('modules/Campaigns/utils.php');
 $focus = new Campaign();
 if(isset($_REQUEST['record']) &&  !empty($_REQUEST['record'])) {
     $focus->retrieve($_REQUEST['record']);
+
+    /*
+    $marketingLink = "index.php?action=WizardMarketing&module=Campaigns&return_module=Campaigns&return_action=WizardHome";
+    $marketingLink .= "&return_id=".$focus->id."&campaign_id=".$focus->id."&jump=3";
+    SugarApplication::redirect($marketingLink);
+    return;
+    */
 
 global $mod_strings;
 global $app_list_strings;
@@ -146,6 +156,45 @@ global $currentModule;
             
     /********** FINAL END OF PAGE UI Stuff ********/
     $ss->display(file_exists('custom/modules/Campaigns/WizardHome.html') ? 'custom/modules/Campaigns/WizardHome.html' : 'modules/Campaigns/WizardHome.html');
+
+    function isWizardSummary() {
+        return $_REQUEST['action'] == 'WizardHome';
+    }
+
+    function getFirstMarketingId($campaignId) {
+        global $db;
+        $campaignId = $db->quote($campaignId);
+        $emailMarketings = BeanFactory::getBean('EmailMarketing')->get_full_list("", "campaign_id = '$campaignId'");
+        $firstEmailMarketing = $emailMarketings[0];
+        $ret = $firstEmailMarketing->id;
+        return $ret;
+    }
+
+    function getMarketingId() {
+        $campaignId = isset($_REQUEST['campaign_id']) && $_REQUEST['campaign_id'] ? $_REQUEST['campaign_id'] : $_REQUEST['record'];
+        $ret = isset($_REQUEST['marketing_id']) && $_REQUEST['marketing_id'] ? $_REQUEST['marketing_id'] : getFirstMarketingId($campaignId);
+        return $ret;
+    }
+
+    if((isset($_REQUEST['WizardMarketingSave']) && $_REQUEST['WizardMarketingSave']) || isWizardSummary()) {
+        $campaign_id = $focus->id;
+        $marketing_id = getMarketingId();
+        if(!$marketing_id && $_SERVER['REQUEST_METHOD'] == 'POST' && $_POST['action'] == 'WizardHome') {
+            $header_URL = "Location: index.php?module=Campaigns&offset=1&return_module=Campaigns&action=DetailView&record=" . $campaign_id;
+        }
+        else {
+            $header_URL = "Location: index.php?action=WizardMarketing&module=Campaigns&return_module=Campaigns&return_action=WizardHome&return_id=" . $campaign_id . "&campaign_id=" . $campaign_id . "&jump=3&show_wizard_marketing=1&marketing_id=" . $marketing_id . "&record=" . $marketing_id . '&campaign_type=' . $focus->campaign_type . (isset($_REQUEST['template_id']) && $_REQUEST['template_id'] ? '&template_id=' . $_REQUEST['template_id'] : '');
+        }
+
+        if(preg_match('/\s*Location:\s*(.*)$/', $header_URL, $matches)) {
+            $href = $matches[1];
+            SugarApplication::redirect($href);
+        }
+        else {
+            header($header_URL);
+        }
+
+    }
     
 }else{
     //there is no record to retrieve, so ask which type of campaign wizard to launch
@@ -166,6 +215,7 @@ global $currentModule;
     $ss = new Sugar_Smarty();
     $ss->assign("MOD", $mod_strings);
     $ss->assign("APP", $app_strings);
+    unset($_SESSION['campaignWizard'][isset($campaign_id) ? $campaign_id : null]['defaultSelectedTemplateId']);
     $ss->display(file_exists('custom/modules/Campaigns/tpls/WizardHomeStart.tpl') ? 'custom/modules/Campaigns/tpls/WizardHomeStart.tpl' : 'modules/Campaigns/tpls/WizardHomeStart.tpl');
        
 }
